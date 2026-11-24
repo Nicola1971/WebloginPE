@@ -46,6 +46,7 @@
 	$wlpe_lang[40] = 'Sesso';
 	$wlpe_lang[41] = 'Online';
 	$wlpe_lang[42] = 'Offline';
+	$wlpe_lang[43] = 'Il modulo è scaduto. Ricarica la pagina e riprova.';
 
 	//Snippet Strings
 	$wlpe_lang[100] = 'Controlla la tua email per i dettagli del nuovo account. Se non ricevi l’email, contatta il webmaster di ';

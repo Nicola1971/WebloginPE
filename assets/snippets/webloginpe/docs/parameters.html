@@ -91,7 +91,7 @@
 				<div class="parameter">
 					<h5>&amp;customTable, &amp;customFields</h5>
 					<p class="details">
-						For total control, WebLoginPE creates a table in your EVO database to store as many user attributes as you want. The default name for this table is 'web_user_attributes_extended', but you can override that with the customTable parameter. You can specify an unlimited amount of column names for this table using the customFields parameter.
+						For total control, WebLoginPE creates a table in your MODx database to store as many user attributes as you want. The default name for this table is 'web_user_attributes_extended', but you can override that with the customTable parameter. You can specify an unlimited amount of column names for this table using the customFields parameter.
 					</p>
 					<div class="example">
 						[!WebLoginPE? &amp;customTable=`my_web_users` &amp;customFields=`website,aim,msn,city,address1`!]
@@ -102,7 +102,7 @@
 				<div class="parameter">
 					<h5>&amp;prefixTable</h5>
 					<p class="details">
-						WebLoginPE will create a table for storing extended user attributes, but if you have already created your own table (and specified it in &amp;customTable) and it does not use the table prefix you entered when you installed EVO, you can use &amp;prefixTable=`0` (default is 1) and WebLoginPE will not auto append the EVO table prefix to the table when it searches for it.
+						WebLoginPE will create a table for storing extended user attributes, but if you have already created your own table (and specified it in &amp;customTable) and it does not use the table prefix you entered when you installed MODx, you can use &amp;prefixTable=`0` (default is 1) and WebLoginPE will not auto append the MODx table prefix to the table when it searches for it.
 					</p>
 					<div class="example">
 						[!WebLoginPE? &amp;customTable=`a_table_i_created` &amp;prefixTable=`0`!]
@@ -276,14 +276,17 @@
 					</div>
 				</div>
 				
-				<a name="legacyMd5"></a>
+				<a name="passwordHash"></a>
 				<div class="parameter">
-					<h5>&amp;legacyMd5</h5>
+					<h5>&amp;passwordHash</h5>
 					<p class="details">
-						Since 1.4.0 passwords are stored with password_hash() (bcrypt), and existing MD5 passwords are converted at the user's next login. Passwords set from the Evolution manager (still MD5) keep working and are converted too. Set &amp;legacyMd5=`1` only if the same web users also log in through another snippet or plugin that understands MD5 passwords only. WebLoginPE also keeps using MD5 if the password column of the web_users table is shorter than 60 characters. The default is 0.
+						How passwords are stored. The default is 'md5', as in previous versions: the Evolution 1.4 core (manager, WebLogin snippet) and MODxAPI, used by FormLister, DocLister and other extras, only understand MD5 passwords for web users.
+					</p>
+					<p class="details">
+						With 'bcrypt' new and changed passwords are stored with password_hash() and existing MD5 passwords are converted at the user's next login through WebLoginPE. <span class="warning">Use it only if WebLoginPE is the only way your users log in: a converted password can no longer be verified by FormLister or the core WebLogin snippet.</span> Use the same value in every WebLoginPE call. WebLoginPE keeps using MD5 if the password column of the web_users table is shorter than 60 characters.
 					</p>
 					<div class="example">
-						[!WebLoginPE? &amp;legacyMd5=`1`!]
+						[!WebLoginPE? &amp;passwordHash=`bcrypt`!]
 					</div>
 				</div>
 				

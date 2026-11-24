@@ -4,7 +4,7 @@
 	
 	//WebLoginPE Class language strings.
 	$wlpe_lang[0] = 'You have left some required form fields blank.';
-	$wlpe_lang[1] = 'Your username is too long. It must be less than 20 characters.';
+	$wlpe_lang[1] = 'Your username is too long. It must be less than 100 characters.';
 	$wlpe_lang[2] = 'Your [+000+] fields do not match. Please try again.';
 	$wlpe_lang[3] = 'The password you entered is too short. Please use at least 6 numbers and/or letters.';
 	$wlpe_lang[4] = 'Your password contains illegal characters. Please use only letters[a-z][A-Z] and numbers[0-9].';
@@ -46,6 +46,7 @@
 	$wlpe_lang[40] = 'Gender';
 	$wlpe_lang[41] = 'Online';
 	$wlpe_lang[42] = 'Offline';
+	$wlpe_lang[43] = 'The form has expired. Please reload the page and try again.';
 	
 	//Snippet Strings
 	$wlpe_lang[100] = 'Check your email for details on your new account. If you do not receive an email, contact the web master of ';

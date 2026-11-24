@@ -19,20 +19,20 @@
 | `&rememberDays` | `30` | Lifetime in days of the "remember me" login (previously 5 years). |
 | `&dobFormat` | `m-d-Y` | Date of birth format: `d`, `m` and `Y` separated by `-`, `/` or `.` (e.g. `d-m-Y`). Dates in `YYYY-MM-DD` format, sent by `<input type="date">`, are always accepted. |
 | `&csrf` | `0` | Set to `1` to require a CSRF token on all forms that change data (login, registration, profile, password reset, account deletion, manager). Every form must then contain the `[+form.csrf+]` placeholder. |
-| `&legacyMd5` | `0` | Set to `1` to keep storing passwords as MD5, as in previous versions (see *Passwords* below). |
+| `&passwordHash` | `md5` | Set to `bcrypt` to store passwords with `password_hash()` instead of MD5. Use it only if WebLoginPE is the only login system of the site (see *Passwords* below). |
 
 Removed parameters: `&loadJquery` and the `taconite` value of `&type`. `&customJs` still works.
 
 ### Passwords
-- New and changed passwords are stored with `password_hash()` (bcrypt) instead of unsalted MD5.
-- Existing MD5 passwords keep working and are converted automatically at the user's next successful login: no action is needed from users.
+- By default passwords are still stored as **MD5**, as in previous versions. The Evolution 1.4 core (manager, WebLogin snippet) and MODxAPI, used by FormLister, DocLister and other extras to log in and save web users, only understand MD5 passwords for web users: keeping MD5 guarantees that all of them keep working.
+- With `&passwordHash=`bcrypt`` new and changed passwords are stored with `password_hash()` (bcrypt) and existing MD5 passwords are converted automatically at the user's next login through WebLoginPE. **Use it only if WebLoginPE is the only way your users log in**: a user whose password has been converted can no longer log in through FormLister or the core WebLogin snippet. Use the same value in every WebLoginPE call.
 - bcrypt hashes are 60 characters long. If the `password` column of the `web_users` table is shorter, WebLoginPE keeps using MD5. Check it with:
 
   ```sql
   SHOW COLUMNS FROM modx_web_users LIKE 'password';
   ```
 
-- The Evolution core (the WebLogin snippet and the manager) still uses MD5 for web users. Passwords set from the manager keep working and are converted at the next login. If the same users also log in through **another** snippet or plugin that only understands MD5, set `&legacyMd5=`1``.
+- Password verification always accepts both formats, so switching `&passwordHash` back to MD5 does not lock out users whose password is already bcrypt. They keep logging in through WebLoginPE, but not through other extras until they set a new password.
 - Temporary passwords created by the password reset are no longer stored in clear text.
 - The password is no longer stored in the session (`$_SESSION['webValid']` is now empty).
 

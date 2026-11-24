@@ -1,10 +1,10 @@
 <?php
 /**
-	 * WebLoginPE
-	 * v1.4.0
-	 *  
-	 * See the "docs" folder for detailed usage and parameter instructions.
-	 */
+     * WebLoginPE
+     * v1.4
+     *  
+     * See the "docs" folder for detailed usage and parameter instructions.
+     */
 
 	$type = isset($type) ? $type : 'simple';
 	$regType = isset($regType) ? $regType : 'instant';
@@ -37,7 +37,7 @@
 	// 1.4.0: nuovi parametri
 	$wlpe->AllowPhoto = (isset($allowPhoto) && (int)$allowPhoto === 1);
 	$wlpe->RememberDays = isset($rememberDays) ? max(1, (int)$rememberDays) : 30;
-	$wlpe->LegacyMd5 = (isset($legacyMd5) && (int)$legacyMd5 === 1);
+	$wlpe->ModernHash = (isset($passwordHash) && strtolower(trim($passwordHash)) === 'bcrypt'); // default MD5 (core di Evolution, FormLister)
 	$wlpe->Csrf = (isset($csrf) && (int)$csrf === 1);
 	if (isset($dobFormat))
 	{

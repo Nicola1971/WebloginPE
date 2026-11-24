@@ -164,10 +164,10 @@ class WebLoginPE
 	var $DobFormat = 'm-d-Y';
 	
 	/**
-	 * 1.4.0: password salvate in MD5 come nelle versioni precedenti (&legacyMd5=`1`)
+	 * 1.4.0: password salvate con password_hash() (bcrypt) invece di MD5 (&passwordHash=`bcrypt`)
 	 * @var bool
 	 */
-	var $LegacyMd5 = false;
+	var $ModernHash = false;
 	
 	/**
 	 * 1.4.0: verifica del token CSRF sui form (&csrf=`1`)
@@ -2615,8 +2615,10 @@ if (trim($username) == '') // pixelchutes
 	
 	/**
 	 * Password (1.4.0)
-	 * password_hash() (bcrypt) con compatibilita' MD5: le password MD5 esistenti
-	 * vengono verificate e convertite al primo login riuscito.
+	 * Di default MD5, compatibile con il core di Evolution 1.4 e con MODxAPI
+	 * (FormLister, DocLister...). Con &passwordHash=`bcrypt` le password vengono
+	 * salvate con password_hash() e le MD5 esistenti convertite al primo login.
+	 * La verifica accetta sempre entrambi i formati.
 	 */
 	function ColumnLength($table, $column)
 	{
@@ -2644,7 +2646,7 @@ if (trim($username) == '') // pixelchutes
 	
 	function UseModernHash()
 	{
-		return !$this->LegacyMd5 && $this->ColumnLength('web_users', 'password') >= 60;
+		return $this->ModernHash && $this->ColumnLength('web_users', 'password') >= 60;
 	}
 	
 	function HashPassword($plain)
@@ -2678,7 +2680,7 @@ if (trim($username) == '') // pixelchutes
 	// Password temporanea del reset (campo cachepwd): hash se la colonna e' abbastanza lunga
 	function HashTempPassword($plain)
 	{
-		if (!$this->LegacyMd5 && $this->ColumnLength('web_users', 'cachepwd') >= 72)
+		if ($this->ColumnLength('web_users', 'cachepwd') >= 72)
 		{
 			return password_hash((string)$plain, PASSWORD_BCRYPT);
 		}

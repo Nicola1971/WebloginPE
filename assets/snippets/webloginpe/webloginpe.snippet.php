@@ -1,11 +1,11 @@
 <?php
 /**
 	 * WebLoginPE
-	 * v1.3.3 Bugfix by Nicola Lambathakis
+	 * v1.3.4 Bugfix by Nicola Lambathakis
 	 *  
 	 * @package WebLoginPE
 	 * @author Scotty Delicious Bugfix by Nicola Lambathakis
-	 * @version 1.3.3
+	 * @version 1.3.4
 	 *
 	 * See the "docs" folder for detailed usage and parameter instructions.
 	 */

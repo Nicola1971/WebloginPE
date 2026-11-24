@@ -144,6 +144,13 @@ class WebLoginPE
 	var $mailer;
 	
 	/**
+	 * Campi definiti come checkbox in &inputHandler (vedi FieldSubmitted)
+	 *
+	 * @var array
+	 */
+	var $CheckboxFields = array();
+	
+	/**
 	 * WebLoginPE Class Constructor
 	 *
 	 * @param array $LanguageArray An array of language specific strings.
@@ -933,6 +940,11 @@ if (trim($username) == '') // pixelchutes
 		// CREDIT: Guillaume to delete data and for code optimisation
 		foreach ($generalElementsArray as $field)
 		{
+			// FIX issue #5: un campo assente dal form non deve cancellare il valore salvato
+			if (!$this->FieldSubmitted($field))
+			{
+				continue;
+			}
 			// FIX strict mode: dob e gender sono colonne INT
 			if ($field == 'dob' || $field == 'gender')
 			{
@@ -965,6 +977,7 @@ if (trim($username) == '') // pixelchutes
 }
 		}
 		
+		$extendedUserAttr = '';
 		if (!empty($this->CustomFields) && $this->CustomFields !== '')
 		{
 			$checkForExtended = "SELECT * FROM ".$this->CustomTable." WHERE `internalKey` = '".$internalKey."'";
@@ -976,12 +989,18 @@ if (trim($username) == '') // pixelchutes
 				$extendedFieldValues = array();
 				foreach ($this->CustomFields as $field)
 				{
+					if (!$this->FieldSubmitted($field)) // FIX issue #5
+					{
+						continue;
+					}
 					// CREDIT: Mike Reid (aka Pixelchutes) for the string escape code.
 					$extendedFieldValues[] = " `".$field."` = '".$modx->db->escape(stripslashes(trim($this->PostString($field))))."'";
 				}
 				$this->OnBeforeWebSaveUser($generalElementsUpdate, $extendedFieldValues);
 				
-				$extendedUserAttr = "UPDATE ".$this->CustomTable." SET".implode(', ', $extendedFieldValues)." WHERE `internalkey` = '".$internalKey."'";
+				$extendedUserAttr = (count($extendedFieldValues) > 0)
+					? "UPDATE ".$this->CustomTable." SET".implode(', ', $extendedFieldValues)." WHERE `internalkey` = '".$internalKey."'"
+					: '';
 			}
 			else
 			{
@@ -1004,7 +1023,7 @@ if (trim($username) == '') // pixelchutes
 		
 		// Execute the database queries.
 		if( count($generalElementsUpdate) > 0 ) $saveMyProfile = $modx->db->query($generalElementsSQL);
-		if (!empty($this->CustomFields) && $this->CustomFields !== '')
+		if (!empty($this->CustomFields) && $this->CustomFields !== '' && $extendedUserAttr !== '')
 		{
 			$insertExtendedAttr = $modx->db->query($extendedUserAttr);			
 		}
@@ -1014,6 +1033,12 @@ if (trim($username) == '') // pixelchutes
 		
 		if ($refreshSession === true)
 		{
+			// FIX: Username non e' impostato durante il salvataggio del profilo,
+			// senza questo webShortname in sessione diventava vuoto
+			if (is_array($this->User) && isset($this->User['username']))
+			{
+				$this->Username = $this->User['username'];
+			}
 			$this->SessionHandler('start');
 		}
 		
@@ -1465,6 +1490,10 @@ if (trim($username) == '') // pixelchutes
 			$name = $dataType[2];
 			$type = $dataType[3];
 			$values = $dataType[4];
+			if ($type == 'checkbox' && $name !== '')
+			{
+				$this->CheckboxFields[$name] = true; // FIX issue #5
+			}
 
 			if ($type == 'select multiple' || $type == 'select')
 			{
@@ -1887,6 +1916,10 @@ if (trim($username) == '') // pixelchutes
 			$name = $dataType[2];
 			$type = $dataType[3];
 			$values = $dataType[4];
+			if ($type == 'checkbox' && $name !== '')
+			{
+				$this->CheckboxFields[$name] = true; // FIX issue #5
+			}
 
 			if ($type == 'select multiple' || $type == 'select')
 			{
@@ -2287,8 +2320,8 @@ if (trim($username) == '') // pixelchutes
 		    $_SESSION['webEmail'] = $this->User['email']; 
 		    $_SESSION['webValidated'] = 1; 
 		    $_SESSION['webInternalKey'] = $this->User['internalKey']; 
-		    $_SESSION['webValid'] = base64_encode($this->Password); 
-		    $_SESSION['webUser'] = base64_encode($this->Username); 
+		    $_SESSION['webValid'] = base64_encode((string)$this->Password); 
+		    $_SESSION['webUser'] = base64_encode((string)$this->Username); 
 		    $_SESSION['webFailedlogins'] = $this->User['failedlogincount']; 
 		    $_SESSION['webLastlogin'] = $this->User['lastlogin']; 
 		    $_SESSION['webnrlogins'] = $this->User['logincount'];
@@ -2554,6 +2587,22 @@ if (trim($username) == '') // pixelchutes
 		// make a unix timestamp out of the original date string.
 		$timestamp = mktime(0, 0, 0, $dateArray[0], $dateArray[1], $dateArray[2]);
 		return $timestamp;
+	}
+	
+	
+	/**
+	 * FieldSubmitted (FIX issue #5)
+	 * True se il campo e' stato inviato dal form. Le checkbox definite in
+	 * &inputHandler contano sempre come inviate (non spuntate il browser non le invia),
+	 * la foto solo se e' stato caricato un file.
+	 */
+	function FieldSubmitted($field)
+	{
+		if ($field == 'photo')
+		{
+			return !empty($_FILES['photo']['name']);
+		}
+		return isset($_POST[$field]) || isset($this->CheckboxFields[$field]);
 	}
 	
 	
@@ -3129,7 +3178,7 @@ if (trim($username) == '') // pixelchutes
 	function ValidateEmail($Email)
 	{
 		// Original: ^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$
-         if (!preg_match('/^[^@]+@[a-zA-Z0-9._-]+\.[a-zA-Z]+$/', $Email)) // vhollo
+         if (filter_var(trim((string)$Email), FILTER_VALIDATE_EMAIL) === false) // FIX issue #1: validazione standard PHP al posto della regex
 		{ 
 			return $this->FormatMessage('The Email address you provided does not appear to be a properly formatted address.');
 		}

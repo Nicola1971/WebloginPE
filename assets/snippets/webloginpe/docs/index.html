@@ -70,18 +70,18 @@
 			
 			<h4>Change Log</h4>
 			
-			<ol><h5>11/24/2026 v. 1.4.0</h5>
-				<li><strong>Security release.</strong> Fixed a vulnerability introduced in 1.3.3 that allowed changing the password of any active user through the activation service. All 1.3.3 and 1.3.4 installations must upgrade.</li>
-				<li><strong>Security:</strong> profile photo uploads are validated on their real content, never stored in the site root and always re-encoded. The upload is now disabled by default: see <a href="parameters.html#allowPhoto">&amp;allowPhoto</a>.</li>
-				<li><strong>Security:</strong> optional bcrypt passwords with <a href="parameters.html#passwordHash">&amp;passwordHash=`bcrypt`</a> (existing MD5 passwords are converted at the next login). MD5 remains the default for compatibility with the Evolution core and MODxAPI (FormLister, DocLister). Temporary passwords of the password reset are no longer stored in clear text and the password is no longer kept in the session.</li>
-				<li><strong>Security:</strong> the "remember me" cookie contains a random, rotating token instead of the password hash, uses HttpOnly, SameSite=Lax and Secure, and lasts <a href="parameters.html#rememberDays">&amp;rememberDays</a> days (default 30, previously 5 years).</li>
-				<li><strong>Security:</strong> optional CSRF protection with <a href="parameters.html#csrf">&amp;csrf</a> and the <a href="placeholders.html">[+form.csrf+]</a> placeholder. The session ID is regenerated after login. [+post.*+], [+user.*+] and [+view.*+] placeholders are HTML-escaped.</li>
-				<li>Passwords are used exactly as typed: special characters are now allowed.</li>
-				<li><strong>New Parameter: <a href="parameters.html#dobFormat">&amp;dobFormat</a></strong> for the date of birth format. Dates sent by &lt;input type=&quot;date&quot;&gt; are always accepted.</li>
-				<li>Removed the 'taconite' type, &amp;loadJquery and the Internet Explorer button fix (btnfix.js).</li>
-				<li>Language strings are now loaded for every WebLoginPE call on the same page.</li>
-				<li>Added the Italian language file.</li>
-			</ol>
+             <ol><h5>11/24/2026 v. 1.4.0</h5>
+                <li><strong>Security release.</strong> All 1.3.3 and 1.3.4 installations must upgrade. Read the "Upgrading from 1.3.x" section of the README before upgrading.</li>
+                <li><strong>Security:</strong> fixed a vulnerability introduced in 1.3.3 that allowed changing the password of any active user through the activation service.</li>
+                <li><strong>Security:</strong> profile photo uploads are validated on their real content, never stored in the site root and always re-encoded. The upload is now disabled by default: see <a href="parameters.html#allowPhoto">&amp;allowPhoto</a>.</li>
+                <li><strong>Security:</strong> the "remember me" cookie contains a random, rotating token instead of the password hash, uses HttpOnly, SameSite=Lax and Secure, and lasts <a href="parameters.html#rememberDays">&amp;rememberDays</a> days (default 30, previously 5 years).</li>
+                <li><strong>Security:</strong> optional CSRF protection with <a href="parameters.html#csrf">&amp;csrf</a> and the <a href="placeholders.html">[+form.csrf+]</a> placeholder. The session ID is regenerated after login. [+post.*+], [+user.*+] and [+view.*+] placeholders are HTML-escaped.</li>
+                <li><strong>Security:</strong> optional bcrypt passwords with <a href="parameters.html#passwordHash">&amp;passwordHash=`bcrypt`</a> (existing MD5 passwords are converted at the next login). MD5 remains the default for compatibility with the EVO core and MODxAPI (FormLister, DocLister). Temporary passwords of the password reset are no longer stored in clear text and the password is no longer kept in the session.</li>
+                <li>Passwords are used exactly as typed: special characters are now allowed.</li>
+                <li><strong>New Parameter: <a href="parameters.html#dobFormat">&amp;dobFormat</a></strong> for the date of birth format. Dates sent by &lt;input type=&quot;date&quot;&gt; are always accepted.</li>
+                <li>Language strings are now loaded for every WebLoginPE call on the same page. New language string 43. Added the Italian language file.</li>
+                <li>Removed the 'taconite' type, &amp;loadJquery, the "taconite XML examples" folder, the jQuery/Taconite scripts and the Internet Explorer button fix (btnfix.js).</li>
+            </ol>
 			
 			<ol><h5>11/24/2026 v. 1.3.4</h5>
 				<li>Fields missing from the submitted profile form no longer overwrite the stored values. Unchecked checkboxes defined in &amp;inputHandler are still saved as empty.</li>

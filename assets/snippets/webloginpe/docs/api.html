@@ -18,8 +18,8 @@
 	<div id="wrapper">
 		<div id="head">
 			<h1>WebLoginPE: Advanced User Management.</h1>
-			<h2>Version 1.3.0</h2>
-			<h3>By Dr. Scotty Delicious, Scientist DFPA.</h3>
+			<h2>Version 1.4.0</h2>
+			<h3>By Dr. Scotty Delicious, Scientist DFPA. <br/>Maintained by Nicola Lambathakis.</h3>
 		</div>
 		<div id="select">
 			<ul id="menu">
@@ -34,7 +34,7 @@
 		<div id="content">
 			<h4>The WebLoginPE API <span class="sidenote">(Application Programming Interface)</span></h4>
 			<p>
-				WebLoginPE is an Object Oriented PHP script. If you would like to extend WebLoginPE please use this document as a reference to it's API. If you are interested in extending the function of WebLoginPE through MODx Plugins, WebLoginPE invokes a <a href="#events">suite of events</a> throughout it's services that you can take advantage of.
+				WebLoginPE is an Object Oriented PHP script. If you would like to extend WebLoginPE please use this document as a reference to it's API. If you are interested in extending the function of WebLoginPE through EVO Plugins, WebLoginPE invokes a <a href="#events">suite of events</a> throughout it's services that you can take advantage of.
 			</p>
 			<p>
 				Instantiation of the WebLoginPE object has 4 parameters, a Language array (required), a date format (optional), user image settings (optional), and type (optional).
@@ -64,7 +64,7 @@
 					
 					<div class="example">
 						<h6>liHomeId</h6>
-						A comma separated list of MODx document IDs to attempt to redirect the user to after login.
+						A comma separated list of EVO document IDs to attempt to redirect the user to after login.
 						<br/>
 						<br/>@var string
 						<br/>@access public
@@ -74,7 +74,7 @@
 					
 					<div class="example">
 						<h6>loHomeId</h6>
-						The MODx document ID to redirect the user to after logout.
+						The EVO document ID to redirect the user to after logout.
 						<br/>
 						<br/>@var string
 						<br/>@access public
@@ -84,7 +84,7 @@
 					
 					<div class="example">
 						<h6>Type</h6>
-						the type of WebLoginPE (simple, register, profile, or taconite)
+						the type of WebLoginPE (simple, register, profile, users or manager)
 						<br/>
 						<br/>@var string
 						<br/>@access protected
@@ -169,6 +169,14 @@
 						<br/>@see PlaceHolders
 					</div>
 					
+					<div class="example">
+						<h6>AllowPhoto, RememberDays, DobFormat, LegacyMd5, Csrf</h6>
+						Settings added in 1.4.0, set by the snippet from the parameters &amp;allowPhoto, &amp;rememberDays, &amp;dobFormat (through SetDobFormat()), &amp;legacyMd5 and &amp;csrf.
+						<br/>
+						<br/>@var bool | int | string
+						<br/>@access public
+					</div>
+					
 				</div>
 			</div>
 			
@@ -195,7 +203,7 @@
 					<div class="example">
 						<h6>OnWebAuthentication</h6>
 						<div class="example">
-							Invoked DURING login when authentication is verified. WebLoginPE uses industry standard techniques to authenticate a user, but, if you have your own authentication schematic, or you want to verify more than just "username" and "password" (for example CAPTCHA or retina scan... j/k), you can use a plugin tied to this event. WebLoginPE will first try to pass authentication to this plugin. If there is no response, it will use it's own authentication. Parameters are 'internalKey', 'username', 'form_password', 'db_password', 'rememberme', and 'stayloggedin'.
+							Invoked DURING login when authentication is verified. WebLoginPE uses industry standard techniques to authenticate a user, but, if you have your own authentication schematic, or you want to verify more than just "username" and "password" (for example CAPTCHA or retina scan... j/k), you can use a plugin tied to this event. The event is invoked during login, but its result is currently not used: WebLoginPE always verifies the password itself. Parameters are 'internalKey', 'username', 'form_password', 'db_password', 'rememberme', and 'stayloggedin'.
 						</div>
 					</div>
 					
@@ -285,15 +293,16 @@
 						<h6>Login( string $type, string $liHomeId )</h6>
 						Perform all the necessary functions to establish a secure user session with permissions
 						<br/>
-						<br/>@param string $type If type = 'taconite' do not call $this->LoginHomePage().
-						<br/>@param string $liHomeId Comma separated list of MODx document ID's to attempt to redirect to after login.
+						<br/>@param string $type The WebLoginPE type.
+						<br/>@param string $liHomeId Comma separated list of EVO document ID's to attempt to redirect to after login.
 						<br/>@return void
 						<br/>@author Scotty Delicious
 					</div>
 					
 					<div class="example">
 						<h6>AutoLogin()</h6>
-						AutoLogin checks for a user cookie and logs the user in automatically
+						AutoLogin checks for a "remember me" cookie and logs the user in automatically.
+						<br/>Since 1.4.0 the cookie contains a random token stored (hashed) in web_user_settings; the token is renewed at every automatic login.
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -303,8 +312,8 @@
 						<h6>Logout()</h6>
 						Destroy the user session and redirect or refresh.
 						<br/>
-						<br/>@param string $type If type = 'taconite' do not call $this->LogoutHomePage().
-						<br/>@param int $loHomeId MODx document ID to redirect to after logout.
+						<br/>@param string $type The WebLoginPE type.
+						<br/>@param int $loHomeId EVO document ID to redirect to after logout.
 						<br/>@return void
 						<br/>@author Scotty Delicious
 					</div>
@@ -358,7 +367,7 @@
 					
 					<div class="example">
 						<h6>SaveUserProfile()</h6>
-						Updates the relevant tables for a given internalKey.
+						Updates the relevant tables for a given internalKey. Only the fields present in the submitted form (and the checkboxes defined in &amp;inputHandler) are updated.
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -373,7 +382,7 @@
 					</div>
 					
 					<div class="example">
-						<h6>ViewAllUsers( string $userTemplate )</h6>
+						<h6>ViewAllUsers( string $userTemplate, string $outerTemplate, string $listUsers )</h6>
 						View all users stored in the web_users table.
 						<br/>
 						<br/>@param string $userTemplate HTML template to display each web user.
@@ -418,25 +427,44 @@
 					</div>
 					
 					<div class="example">
-						<h6>PlaceHolders( string $dateFormat, array $inputHandler, string $UserImageSettings, string $MessageTemplate )</h6>
-						Sets place holders using the MODx method setPlaceholder() for fields in web_user_attributes.
+						<h6>PlaceHolders( array $inputHandler, string $MessageTemplate )</h6>
+						Sets place holders using the EVO method setPlaceholder() for fields in web_user_attributes, the extended table, the submitted form ([+post.*+]) and the CSRF token ([+form.csrf+]).
 						<br/>
-						<br/>@param string $dateFormat The strftime() format set in the calling script.
 						<br/>@param array $inputHandler An array of inputs to... uhh... handle?
-						<br/>@param string $UserImageSettings The specifications for the user image.
 						<br/>@param string $MessageTemplate The template for $this->Report.
 						<br/>@return void
 						<br/>@author Scotty Delicious
 					</div>
 					
 					<div class="example">
-						<h6>RegisterScripts( string $customJs )</h6>
-						Uses the MODx regClientStartupScript() method to load the jQuery scripts for taconite.
-						<br/>Optionally, it can load a custom js file (passed as a parameter.) if needed.
+						<h6>FormatDate( string $format, int $timestamp )</h6>
+						Formats a timestamp with a strftime() format. Uses strftime() on PHP &lt; 8.1 and an equivalent conversion on newer versions.
 						<br/>
-						<br/>@param string $customJs URL to a custom javascript file to be loaded.
-						<br/>@return void
-						<br/>@author Scotty Delicious
+						<br/>@param string $format A strftime() format.
+						<br/>@param int $timestamp
+						<br/>@return string
+					</div>
+					
+					<div class="example">
+						<h6>HashPassword( string $plain ) / VerifyPassword( string $plain, string $stored )</h6>
+						Hashes a password with password_hash() (bcrypt), or MD5 with &amp;legacyMd5. VerifyPassword() accepts both bcrypt and MD5 hashes.
+						<br/>
+						<br/>@return string | bool
+					</div>
+					
+					<div class="example">
+						<h6>CsrfToken() / CheckCsrfToken()</h6>
+						CsrfToken() returns the CSRF token of the current session (and creates it if needed). CheckCsrfToken() checks the token sent in the "wlpe_csrf" form field.
+						<br/>
+						<br/>@return string | bool
+					</div>
+					
+					<div class="example">
+						<h6>EscapeOutput( mixed $value )</h6>
+						HTML-escapes a value for a placeholder without encoding existing entities twice, and neutralizes Evolution tags.
+						<br/>
+						<br/>@param mixed $value
+						<br/>@return string
 					</div>
 					
 				</div>
@@ -448,7 +476,7 @@
 					
 					<div class="example">
 						<h6>OnBeforeWebLogin()</h6>
-						Invokes the MODx event OnBeforeWebLogin.
+						Invokes the EVO event OnBeforeWebLogin.
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -464,7 +492,7 @@
 					
 					<div class="example">
 						<h6>OnBeforeWebLogout()</h6>
-						Invokes the MODx event OnBeforeWebLogout
+						Invokes the EVO event OnBeforeWebLogout
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -472,7 +500,7 @@
 					
 					<div class="example">
 						<h6>OnWebLogout()</h6>
-						Invokes the MODx event OnWebLogout
+						Invokes the EVO event OnWebLogout
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -542,7 +570,8 @@
 					
 					<div class="example">
 						<h6>MakeDateForDb( string $date )</h6>
-						Returns a UNIX timestamp for the string provided.
+						Deprecated since 1.3.3, replaced by DobToInt( string $date ), which follows &amp;dobFormat and returns 0 for an empty or invalid date.
+						<br/>Returns a UNIX timestamp for the string provided.
 						<br/>
 						<br/>@param string $date A date in the format MM-DD-YYY
 						<br/>@return int Returns a UNIX timestamp for the date provided.
@@ -551,8 +580,8 @@
 					
 					<div class="example">
 						<h6>CreateUserImage()</h6>
-						Creates an image for the user profile from a user uploaded image.
-						<br/>This image is renamed to the username and moved to the webloginpe/userimages/ folder.
+						Creates an image for the user profile from a user uploaded image (only with &amp;allowPhoto).
+						<br/>The file is checked on its real content (JPEG, GIF or PNG), resized, re-encoded and saved in the webloginpe/userimages/ folder with the username as file name.
 						<br/>The URL to this image is returned to be stored in the web_user_attributes table.
 						<br/>
 						<br/>@return string A URL to the user image created.
@@ -579,7 +608,7 @@
 					
 					<div class="example">
 						<h6>ValidateEmail( string $Email )</h6>
-						Validate an email address by regex and MX reccord
+						Validates an email address with filter_var() (FILTER_VALIDATE_EMAIL).
 						<br/>
 						<br/>@param string $Email An email address.
 						<br/>@return void
@@ -588,7 +617,7 @@
 					
 					<div class="example">
 						<h6>GeneratePassword( int $length )</h6>
-						Generate a random password of a specified number of characters. [a-z][A-Z][2-9].
+						Generate a random password of a specified number of characters. [a-z][A-Z][2-9]. Uses random_int().
 						<br/>
 						<br/>@param int $length 
 						<br/>@return void
@@ -620,7 +649,7 @@
 				<a href="placeholders.html">Placeholders</a>
 				<a href="api.html">API</a>
 			</p>
-			<p id="credits">&copy; 2007 Scotty Delicious.</p>
+			<p id="credits">&copy; 2007 Scotty Delicious, &copy; 2026 Nicola Lambathakis.</p>
 		</div>
 	</div>
 </body>

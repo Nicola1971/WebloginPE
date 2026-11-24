@@ -18,8 +18,8 @@
 	<div id="wrapper">
 		<div id="head">
 			<h1>WebLoginPE: Advanced User Management.</h1>
-			<h2>Version 1.3.0</h2>
-			<h3>By Dr. Scotty Delicious, Scientist DFPA.</h3>
+			<h2>Version 1.4.0</h2>
+			<h3>By Dr. Scotty Delicious, Scientist DFPA. <br/>Maintained by Nicola Lambathakis.</h3>
 		</div>
 		<div id="select">
 			<ul id="menu">
@@ -33,13 +33,14 @@
 		</div>
 		<div id="content">
 			<h4>Using custom views / templates</h4>
-			<p>Every view that is presented to the user can be customized using MODx chunks.</p>
+			<p>Every view that is presented to the user can be customized using EVO chunks.</p>
 			<p>The snippet changes between views based on a post-back system. It looks for the value of $_POST['service'] to determine which view to display. In the case of the default view for a logged in user, a form is presented with two submit buttons. The buttons each have the name attribute set to "service", but a different value</p>
 			<div class="code"><div class="parameter">
 				&lt;button type=&quot;submit&quot; id=&quot;wlpeLogoutButton&quot; name=&quot;service&quot; value=&quot;logout&quot;&gt;Log Out&lt;/button&gt; <br />
 				&lt;button type=&quot;submit&quot; id=&quot;wlpeProfileButton&quot; name=&quot;service&quot; value=&quot;profile&quot;&gt;Profile&lt;/button&gt;
 			</div></div>
 			<p>If the "Log Out" button is pressed, the $_POST['service'] value is "logout" and WebLoginPE executes the code in the case 'logout': block.</p>
+			<p class="warning">In forms that save data (registration, profile, manager) use only <strong>one</strong> submit button named "service" and turn the other actions (Cancel, Back...) into links. When the user presses Enter in a field, the browser submits the form with the first submit button, which may not be the one you expect.</p>
 			<h5>The services in WebLoginPE are:</h5>
 			<table id="servicesTable">
 				<tr>
@@ -88,7 +89,7 @@
 				<tr>
 					<td class="servicesHead">Manager</td>
 					<td class="servicesHead">Users</td>
-					<td class="servicesHead">Taconite</td>
+					<td class="servicesHead">&nbsp;</td>
 				</tr>
 				<tr>
 					<td class="servicesList">
@@ -108,15 +109,7 @@
 							<li>default <span class="sidenote">(display all users)</span></li>
 						</ul>
 					</td>
-					<td class="servicesList">
-						<ul>
-							<li>login</li>
-							<li>logout</li>
-							<li>register</li>
-							<li>resetpassword</li>
-							<li>activated</li>
-						</ul>
-					</td>
+					<td class="servicesList">&nbsp;</td>
 				</tr>
 			</table>
 				
@@ -140,7 +133,7 @@
 				<div class="parameter">
 					<h5>&amp;loginFormTpl</h5>
 					<p class="details">
-						The view presented to the user asking for their "username" and "password". Required form field names are "username" and "password". Optional inputs are a checkbox named "rememberme" which sets a 5 year cookie, or a select named "stayloggedin" which sets a cookie for the number of seconds specified in each options value. The cookie name is "WebLoginPE" and the value is a MD5 hash of the username and password (usernames and passwords should never be set in the open because cookies are saved in plain text. That is why WebLoginPE converts them to a hash). When the user returns to your site, WebLoginPE grabs the cookie, uses an algorithm to decode the username and password, then automatically logs the user in.
+						The view presented to the user asking for their "username" and "password". Required form field names are "username" and "password". Optional inputs are a checkbox named "rememberme", which keeps the user logged in for the number of days set in <a href="parameters.html#rememberDays">&amp;rememberDays</a> (default 30), or a select named "stayloggedin", which keeps the user logged in for the number of seconds specified in each option value. The cookie is named "WebLoginPE" and contains a random token, never the username or the password: the token is renewed at every automatic login and deleted at logout or when the password changes.
 					</p>
 					<div class="example">
 						<h6>Default:</h6>
@@ -152,7 +145,7 @@
 				<div class="parameter">
 					<h5>&amp;successTpl</h5>
 					<p class="details">
-						The view presented to the user asking for their "username" and "password". Required form field names are "username" and "password". Optional inputs are a checkbox named "rememberme" which sets a 5 year cookie, or a select named "stayloggedin" which sets a cookie for the number of seconds specified in each options value. The cookie name is "WebLoginPE" and the value is a MD5 hash of the username and password (usernames and passwords should never be set in the open because cookies are saved in plain text. That is why WebLoginPE converts them to a hash). When the user returns to your site, WebLoginPE grabs the cookie, uses an algorythm to decode the username and password, then automatically logs the user in.
+						The view presented to a logged in user instead of the login form, for example a welcome message with the buttons "logout" and "profile". You can use all the [+user.<em>fieldname</em>+] placeholders of the current user.
 					</p>
 					<div class="example">
 						<h6>Default:</h6>
@@ -174,8 +167,11 @@
 						<p class="details">
 							If you specified form fields in <strong>&amp;inputHandler</strong>, you could also use the <strong>[+form.<em>fieldname</em>+]</strong> placeholder here.
 						</p>
+						<p class="details">
+							If you enabled <a href="parameters.html#csrf">&amp;csrf</a>, every form (registration, login, profile, reset, activation...) must contain the <strong>[+form.csrf+]</strong> placeholder.
+						</p>
 					<p class="warning">
-						<strong>*</strong>It is advised against providing inputs for id, internalKey, role, blocked, blockedunitl, blockedafter, failedlogincount, and sessionid as that can SERIOUSLY corrupt your entire MODx installation. Those fields should only be edited by the web master from the back end.
+						<strong>*</strong>It is advised against providing inputs for id, internalKey, role, blocked, blockedunitl, blockedafter, failedlogincount, and sessionid as that can SERIOUSLY corrupt your entire EVO installation. Those fields should only be edited by the web master from the back end.
 					</p>
 					<div class="example">
 						<h6>Default Instant:</h6>
@@ -231,6 +227,9 @@
 					</div>
 					<p class="details">
 						If you specified form fields in <strong>&amp;inputHandler</strong>, you could also use the <strong>[+form.<em>fieldname</em>+]</strong> placeholder here and the users selections and checks would be remembered and pre-selected or pre-checked.
+					</p>
+					<p class="details">
+						Only the fields present in the submitted form are saved: fields that are not in your form keep their stored value. Checkboxes defined in <strong>&amp;inputHandler</strong> are always saved, so an unchecked checkbox is saved as empty.
 					</p>
 					
 					<div class="example">
@@ -345,7 +344,7 @@
 				<div class="parameter">
 					<h5>&amp;resetTpl</h5>
 					<p class="details">
-						The form presented when a user clicks the "Forgot Password" button. This form has only one input ("email"). They enter their email address, WebLoginPE sets a random password and key in the <strong>web_users</strong> table's <strong>cachepwd</strong> field and sends them a link to the URL of the page that this was called from with the string "<strong>?service=activate&amp;userid=3&amp;activationkey=kl3tW5rtDi</strong> where "<strong>3</strong>" would be the users <strong>internalKey</strong> and "<strong>kl3tW5rtDi</strong>" would be the randomly generated activation key which is a 10 character string.
+						The form presented when a user clicks the "Forgot Password" button. This form has only one input ("email"). They enter their email address, WebLoginPE sets a random password and key in the <strong>web_users</strong> table's <strong>cachepwd</strong> field and sends them a link to the URL of the page that this was called from with the string "<strong>?service=activate&amp;userid=3&amp;activationkey=kl3tW5rtDi</strong> where "<strong>3</strong>" would be the users <strong>internalKey</strong> and "<strong>kl3tW5rtDi</strong>" would be the randomly generated activation key which is a 10 character string. Since 1.4.0 the temporary password is stored hashed and the activation works only while a real reset request is pending.
 					</p>
 					<div class="example">
 						<h6>Default:</h6>
@@ -399,7 +398,7 @@
 				<a href="placeholders.html">Placeholders</a>
 				<a href="api.html">API</a>
 			</p>
-			<p id="credits">&copy; 2007 Scotty Delicious.</p>
+			<p id="credits">&copy; 2007 Scotty Delicious, &copy; 2026 Nicola Lambathakis.</p>
 		</div>
 	</div>
 </body>

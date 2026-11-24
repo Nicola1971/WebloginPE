@@ -188,7 +188,7 @@ class WebLoginPE
 		global $modx;
 		
 		unset($this->Report);
-		$messageTemplate = str_replace('[+wlpe.message.text+]', $message, $this->MessageTemplate);
+		$messageTemplate = str_replace('[+wlpe.message.text+]', $message, ((string)$this->MessageTemplate !== '') ? $this->MessageTemplate : '[+wlpe.message.text+]'); // FIX PHP 8.1: template non ancora impostato
 		$this->Report = $messageTemplate;
 		$modx->setPlaceholder('wlpe.message', $messageTemplate);
 		unset ($messageTemplate);
@@ -212,8 +212,8 @@ class WebLoginPE
 		$this->Type = $type;
 		$this->liHomeId = $liHomeId;
 		
-		$this->Username = $modx->db->escape(strip_tags($_POST['username']));
-		$this->Password = $modx->db->escape(strip_tags($_POST['password']));
+		$this->Username = $modx->db->escape(strip_tags($this->PostString('username')));
+		$this->Password = $modx->db->escape(strip_tags($this->PostString('password')));
 		if ($this->Username == '' || $this->Password == '')
 		{
 			$this->FormatMessage($this->LanguageArray[5]);
@@ -258,8 +258,13 @@ class WebLoginPE
 		
 		$cookieName = 'WebLoginPE';
 		
-		$cookie = explode('|', $_COOKIE[$cookieName]);
-		$this->Username = $cookie[0];
+		// FIX PHP 8: cookie assente / malformato
+		if (empty($_COOKIE[$cookieName]) || !is_string($_COOKIE[$cookieName]) || strpos($_COOKIE[$cookieName], '|') === false)
+		{
+			return false;
+		}
+		$cookie = explode('|', $_COOKIE[$cookieName], 2);
+		$this->Username = $modx->db->escape($cookie[0]); // FIX sicurezza: il valore del cookie finiva nella query senza escape
 		$this->Password = $cookie[1];
 		
 		$web_users = $modx->getFullTableName('web_users');
@@ -287,7 +292,7 @@ class WebLoginPE
 		$this->Authenticate();
 		$this->SessionHandler('start');
 		$this->UserDocumentGroups();
-		if ($type !== 'taconite')
+		if ($this->Type !== 'taconite') // FIX: $type non esisteva in questo metodo
 		{
 			$this->LoginHomePage();
 		}
@@ -306,9 +311,9 @@ class WebLoginPE
 	function Logout($type, $loHomeId = '')
 	{
 		$logoutparameters = array(
-				'username'		=> $_SESSION['webShortname'],
-				'internalKey'		=> $_SESSION['webInternalKey'],
-				'userid'		=> $_SESSION['webInternalKey'] // Bugfix by TS
+				'username'		=> (isset($_SESSION['webShortname']) ? $_SESSION['webShortname'] : ''),
+				'internalKey'		=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : ''),
+				'userid'		=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : '') // Bugfix by TS
 				); // SMF connector fix http://modxcms.com/forums/index.php?topic=26565.0 c/o tazzydemon
 				
 		$this->Type = $type;
@@ -370,10 +375,10 @@ class WebLoginPE
 	 		}
 	 		if (!in_array($table, $allTables))
 	 		{
-				$createTable = $modx->db->query("CREATE TABLE IF NOT EXISTS ".$this->CustomTable." (id INT(10) NOT NULL AUTO_INCREMENT PRIMARY KEY, internalKey INT(10) NOT NULL)");
+				$createTable = $modx->db->query("CREATE TABLE IF NOT EXISTS ".$this->CustomTable." (id INT(10) NOT NULL AUTO_INCREMENT PRIMARY KEY, internalKey INT(10) NOT NULL DEFAULT 0)");
 				if (!$createTable)
 				{
-					return $this->FormatMessage($modx->db->getLastError);
+					return $this->FormatMessage($modx->db->getLastError());
 				}
 				$addIndex = $modx->db->query("ALTER TABLE ".$this->CustomTable." ADD INDEX `userid` ( `internalKey` )");
 	 		}
@@ -401,7 +406,7 @@ class WebLoginPE
 			{
 				if (!in_array($field, $columnNames))
 				{
-					$addColumn = $modx->db->query("ALTER TABLE ".$this->CustomTable." ADD (`".$field."` VARCHAR(255) NOT NULL)");
+					$addColumn = $modx->db->query("ALTER TABLE ".$this->CustomTable." ADD (`".$field."` VARCHAR(255) NOT NULL DEFAULT '')");
 				}
 			}
 		}		
@@ -431,35 +436,36 @@ class WebLoginPE
 		$web_groups = $modx->getFullTableName('web_groups');
 		$webgroup_names = $modx->getFullTableName('webgroup_names');
 		
-		$username = $_POST['username'];
+		$username = $this->PostString('username');
 		$this->Username = $username;
-	    $password = $modx->db->escape($modx->stripTags($_POST['password']));
-		$passwordConfirm = $modx->db->escape($modx->stripTags($_POST['password_confirm']));
-	    $fullname = $modx->db->escape($modx->stripTags($_POST['fullname']));
-	    $email = $modx->db->escape($modx->stripTags($_POST['email']));
-	    $phone = $modx->db->escape($modx->stripTags($_POST['phone']));
-		$mobilephone = $modx->db->escape($modx->stripTags($_POST['mobilephone']));
-		$fax = $modx->db->escape($modx->stripTags($_POST['fax']));
-		$dob = $modx->db->escape($modx->stripTags($_POST['dob']));
-		$gender = $modx->db->escape($modx->stripTags($_POST['gender']));
-	    $country = $modx->db->escape($modx->stripTags($_POST['country']));
-	    $state = $modx->db->escape($modx->stripTags($_POST['state']));
-	    $zip = $modx->db->escape($modx->stripTags($_POST['zip']));
-		$comment = $modx->db->escape($modx->stripTags($_POST['comment']));
+	    $password = $modx->db->escape($modx->stripTags($this->PostString('password')));
+		$passwordConfirm = $modx->db->escape($modx->stripTags($this->PostString('password_confirm')));
+	    $fullname = $modx->db->escape($modx->stripTags($this->PostString('fullname')));
+	    $email = $modx->db->escape($modx->stripTags($this->PostString('email')));
+	    $phone = $modx->db->escape($modx->stripTags($this->PostString('phone')));
+		$mobilephone = $modx->db->escape($modx->stripTags($this->PostString('mobilephone')));
+		$fax = $modx->db->escape($modx->stripTags($this->PostString('fax')));
+		// FIX strict mode: dob e gender sono colonne INT, mai stringa vuota
+		$dob = $this->DobToInt(isset($_POST['dob']) ? $_POST['dob'] : '');
+		$gender = isset($_POST['gender']) ? (int)$_POST['gender'] : 0;
+	    $country = $modx->db->escape($modx->stripTags($this->PostString('country')));
+	    $state = $modx->db->escape($modx->stripTags($this->PostString('state')));
+	    $zip = $modx->db->escape($modx->stripTags($this->PostString('zip')));
+		$comment = $modx->db->escape($modx->stripTags($this->PostString('comment')));
 		$cachepwd = time();
 		
 		// Check for required fields.
-if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['username']) == '' ) // pixelchutes
+if (trim($username) == '') // pixelchutes
 		{			
 			return $this->FormatMessage($this->LanguageArray[0]);
 		}
-		if ( strlen($_POST['email']) > 0 ) // pixelchutes
+		if ( strlen($this->PostString('email')) > 0 ) // pixelchutes
 		{
 			// Validate the email address.
-			$this->ValidateEmail($_POST['email']);
+			$this->ValidateEmail($this->PostString('email'));
 			if (!empty($this->Report))
 			{
-				return $this->report;
+				return $this->Report; // FIX: era $this->report (proprieta' inesistente)
 			}
 		}
 		if ($regRequired !== '')
@@ -469,8 +475,8 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			{
 				if ($field == 'formcode')
 				{
-					$formcode = $_POST['formcode'];
-					if ($_SESSION['veriword'] !== $formcode)
+					$formcode = $this->PostString('formcode');
+					if (!isset($_SESSION['veriword']) || $_SESSION['veriword'] !== $formcode)
 					{
 						return $this->FormatMessage($this->LanguageArray[6]);
 					}
@@ -479,14 +485,14 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				if ($field == 'email')
 				{
 					// Validate the email address.
-					$this->ValidateEmail($_POST['email']);
+					$this->ValidateEmail($this->PostString('email'));
 					if (!empty($this->Report))
 					{
-						return $this->report;
+						return $this->Report; // FIX: era $this->report (proprieta' inesistente)
 					}
 				}
 				
-				if ($_POST[$field] == '' || empty($_POST[$field]))
+				if (empty($_POST[$field]))
 				{
 					if ($field == 'tos')
 					{
@@ -510,6 +516,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			return $this->FormatMessage($this->LanguageArray[1]);
 		}
 		
+		$fieldMessage = ''; // FIX PHP 8: variabile non inizializzata
 		// Check for arrays and that "confirm" fields match.
 		foreach ($_POST as $field => $value)
 		{
@@ -551,7 +558,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				return $this->FormatMessage($this->LanguageArray[3]);
 			}
 			
-			if (md5($password) !== md5($_POST['password']))
+			if (md5($password) !== md5($this->PostString('password')))
 			{
 				return $this->FormatMessage($this->LanguageArray[4]);
 			}
@@ -600,6 +607,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		}
 		
 		// EVENT: OnBeforeWebSaveUser
+		$NewUser = array();
 		foreach ($_POST as $name => $value)
 		{
 			$NewUser[$name] = $value;
@@ -620,7 +628,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		
 		$newUserAttr = "INSERT INTO ".$web_user_attributes.
 		" (internalKey, fullname, email, phone, mobilephone, dob, gender, country, state, zip, fax, photo, comment) VALUES".
-		" ('".$key."', '".$fullname."', '".$email."', '".$phone."', '".$mobilephone."', '".$dob."', '".$gender."', '".$country."', '".$state."', '".$zip."', '".$fax."', '".$photo."', '".$comment."')";
+		" ('".$key."', '".$fullname."', '".$email."', '".$phone."', '".$mobilephone."', ".(int)$dob.", ".(int)$gender.", '".$country."', '".$state."', '".$zip."', '".$fax."', '".$photo."', '".$comment."')";
 		$insertUserAttr = $modx->db->query($newUserAttr);
 				
 		if (!$insertUserAttr)
@@ -633,7 +641,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			$extendedFieldValues = array();
 			foreach ($this->CustomFields as $field)
 			{
-				$extendedFieldValues[$field] = $modx->db->escape($_POST[$field]);
+				$extendedFieldValues[$field] = $modx->db->escape($this->PostString($field));
 			}
 			$extendedFieldValues = implode("', '", $extendedFieldValues);
 			$extendedFields = implode('`, `', $this->CustomFields);
@@ -651,7 +659,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		
 		// EVENT: OnBeforeAddToGroup
 		$this->OnBeforeAddToGroup($GLOBALS['groupsArray']);
-		if (count($groupArray > 0))
+		if (is_array($GLOBALS['groupsArray']) && count($GLOBALS['groupsArray']) > 0) // FIX PHP 8: count() su booleano = TypeError
 		{
 			$groupsList = "'".implode("','", $GLOBALS['groupsArray'])."'";
 			$groupNames = $modx->db->query("SELECT `id` FROM ".$webgroup_names." WHERE `name` IN (".$groupsList.")");
@@ -725,11 +733,18 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			
 			$Notify = $this->mailer;
 			$Notify->CharSet = $modx->config['modx_charset'];
+			// FIX: stesso oggetto mailer della mail all'utente -> svuota i destinatari,
+			// altrimenti la notifica admin arriva anche al nuovo utente
+			$Notify->ClearAllRecipients();
+			$Notify->ClearReplyTos();
 			
 			foreach ($emailArray as $address)
 			{
-				$Notify->From = $email;
-				$Notify->FromName = $fullname;
+				// FIX: mittente = indirizzo del sito (SPF/DMARC), l'utente va in Reply-To
+				$Notify->From = $myEmail;
+				$Notify->FromName = $siteName;
+				$Notify->ClearReplyTos();
+				$Notify->AddReplyTo($email, $fullname);
 				$Notify->Subject = $notifySubject;
 				$Notify->Body = $notification;
 				$Notify->AddAddress($address);
@@ -774,7 +789,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				
 				// Email the Web Master regarding pruned accounts.
 				$prunedMessage = str_replace('[+000+]', $user['username'], $this->LanguageArray[36]);
-				$prunedMessage = str_replace('[+111+]', strftime('%A %B %d, %Y', $user['cachepwd']), $prunedMessage);
+				$prunedMessage = str_replace('[+111+]', $this->FormatDate('%A %B %d, %Y', $user['cachepwd']), $prunedMessage);
 				$emailsender = $modx->config['emailsender'];
 				
 				$Pruned = $this->mailer;
@@ -858,7 +873,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		{
 			if ($_POST['password'] === $_POST['password_confirm']) // pixelchutes
 			{
-				if (md5($_POST['password']) === md5($modx->db->escape(strip_tags($_POST['password']))))
+				if (md5($_POST['password']) === md5($modx->db->escape(strip_tags($this->PostString('password')))))
 				{
 					if (strlen($_POST['password']) > 5)
 					{
@@ -884,6 +899,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			}
 		}
 		
+		$fieldMessage = ''; // FIX PHP 8: variabile non inizializzata
 		// Check for arrays and that "confirm" fields match.
 		foreach ($_POST as $field => $value)
 		{
@@ -917,9 +933,18 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		// CREDIT: Guillaume to delete data and for code optimisation
 		foreach ($generalElementsArray as $field)
 		{
+			// FIX strict mode: dob e gender sono colonne INT
+			if ($field == 'dob' || $field == 'gender')
+			{
+				$intValue = ($field == 'dob')
+					? $this->DobToInt(isset($_POST['dob']) ? $_POST['dob'] : '')
+					: (isset($_POST['gender']) ? (int)$_POST['gender'] : 0);
+				$generalElementsUpdate[] = " `".$field."` = ".(int)$intValue;
+				continue;
+			}
 			if ($field == 'photo')
 			{
-				if ($_FILES['photo']['name'] !== '' && !empty($_FILES['photo']['name']))
+				if (!empty($_FILES['photo']['name']))
 				{
 					$_POST['photo'] = $this->CreateUserImage();
 					if (!empty($this->Report))
@@ -932,11 +957,11 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			{
 				$_POST['dob'] = $this->MakeDateForDb($_POST['dob']);
 			}
-			if ($field!='photo' || ($_FILES['photo']['name'] !== '' && !empty($_FILES['photo']['name']))) // for update db with value and blank value (except if the field is 'photo')
+			if ($field!='photo' || (!empty($_FILES['photo']['name']))) // for update db with value and blank value (except if the field is 'photo')
 {
 	// CREDIT: Mike Reid (aka Pixelchutes) for the string escape code.
 	$charset='"'.$modx->config['modx_charset'].'"';
-	$generalElementsUpdate[] = " `".$field."` = '".$modx->db->escape(stripslashes(htmlentities(trim($_POST[$field]), ENT_QUOTES, $modx->config['modx_charset'])))."'";
+	$generalElementsUpdate[] = " `".$field."` = '".$modx->db->escape(stripslashes(htmlentities(trim($this->PostString($field)), ENT_QUOTES, $modx->config['modx_charset'])))."'";
 }
 		}
 		
@@ -952,7 +977,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				foreach ($this->CustomFields as $field)
 				{
 					// CREDIT: Mike Reid (aka Pixelchutes) for the string escape code.
-					$extendedFieldValues[] = " `".$field."` = '".$modx->db->escape(stripslashes(trim($_POST[$field])))."'";
+					$extendedFieldValues[] = " `".$field."` = '".$modx->db->escape(stripslashes(trim($this->PostString($field))))."'";
 				}
 				$this->OnBeforeWebSaveUser($generalElementsUpdate, $extendedFieldValues);
 				
@@ -965,7 +990,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				{
 					// CREDIT: Mike Reid (aka Pixelchutes) for the string escape code.
 					$charset=$modx->config['modx_charset'];
-					$extendedFieldValues[$field] = $modx->db->escape(stripslashes(htmlentities(trim($_POST[$field]), ENT_QUOTES,$charset)));
+					$extendedFieldValues[$field] = $modx->db->escape(stripslashes(htmlentities(trim($this->PostString($field)), ENT_QUOTES,$charset)));
 				}
 				$this->OnBeforeWebSaveUser($generalElementsUpdate, $extendedFieldValues);
 				
@@ -984,7 +1009,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			$insertExtendedAttr = $modx->db->query($extendedUserAttr);			
 		}
 		
-		$this->User = $this->QueryDbForUser($currentWebUser['username']);
+		$this->User = $this->QueryDbForUser(is_array($currentWebUser) ? $currentWebUser['username'] : '');
 		$this->OnWebSaveUser('update', $this->User);
 		
 		if ($refreshSession === true)
@@ -1015,7 +1040,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		{
 			return $this->FormatMessage($this->LanguageArray[13]);
 		}
-		$this->OnWebDeleteUser($internalKey, $deleteUser['username']);
+		$this->OnWebDeleteUser($internalKey, is_array($deletedUser) ? $deletedUser['username'] : ''); // FIX: era $deleteUser (risultato della query)
 		return;
 	}
 	
@@ -1062,6 +1087,9 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		$web_users = $modx->getFullTableName('web_users');
 		$fetchUsers = $modx->db->query("SELECT `username` FROM ".$web_users);
 		$allUsers = $this->FetchAll($fetchUsers);
+		$FinalDisplay = '';
+		$displayUserTemplate = '';
+		$CombinedList = '';
 		
 		if ($listUsers == '')
 		{
@@ -1073,7 +1101,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			$eachList = explode('||', $listUsers);
 			foreach ($eachList as $eachListFormat)
 			{
-				$format = explode(':', $eachListFormat);
+				$format = array_pad(explode(':', $eachListFormat), 6, '');
 				$listName = $format[0];
 				
 				$listOuterTemplate = $format[1];
@@ -1124,7 +1152,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$allFilters = explode(',', str_replace(', ', ',', $format[5]));
 				foreach ($allFilters as $theFilter)
 				{
-					$filters = explode('(', $theFilter);
+					$filters = array_pad(explode('(', $theFilter), 2, '');
 					$filterBy = $filters[0];
 					
 					$sortNumerics = array('dob','lastlogin','thislogin','internalKey','logincount','blocked','blockeduntil','blockedafter','failedlogincount','gender');
@@ -1226,9 +1254,9 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			        }
 			    }
 				//List here
-				if (is_array($sortArray[$listSortBy]))
+				if (isset($sortArray[$listSortBy]) && is_array($sortArray[$listSortBy]))
 				{
-					$arrayMap = array_map('strtolower', $sortArray[$listSortBy]);
+					$arrayMap = array_map(function ($v) { return strtolower((string)$v); }, $sortArray[$listSortBy]);
 					array_multisort($arrayMap, $listSortOrder, $typeFlag, $CompleteUserList);
 					
 					foreach ($CompleteUserList as $theUser)
@@ -1260,7 +1288,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 						foreach ($user as $field => $value)
 						{
 							// $value = html_entity_decode($value);
-							$needToSplit = strpos($value, '||');
+							$needToSplit = strpos((string)$value, '||');
 							if ($needToSplit > 0)
 							{
 								$user[$field] = str_replace('||', ', ', $value);
@@ -1279,7 +1307,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 								{
 									$ageDecimal = ((time() - $value) / (60 * 60 * 24 * 365));
 									$age = substr($ageDecimal, 0, strpos($ageDecimal, "."));
-									$value = strftime('%m-%d-%Y', $value);
+									$value = $this->FormatDate('%m-%d-%Y', $value);
 									$eachProfile = str_replace('[+view.age+]', $age, $eachProfile);
 								}
 							}
@@ -1291,7 +1319,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 								}
 								else
 								{
-									$value = strftime($this->DateFormat, $value);
+									$value = $this->FormatDate($this->DateFormat, $value);
 								}
 							}
 
@@ -1327,7 +1355,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		
 		$findID = $modx->db->query("SELECT * FROM ".$web_users." WHERE `username` = '".$username."'");
 		$userID = $modx->db->getRow($findID);
-		$userID = $userID['id'];
+		$userID = is_array($userID) ? $userID['id'] : 0;
 		$viewUser = $modx->getWebUserInfo($userID);
 		$modx->setPlaceholder('view.username', $viewUser['username']);
 		$allFields = $modx->db->query("SELECT * FROM ".$web_user_attributes.", ".$this->CustomTable." WHERE ".$web_user_attributes.".`internalKey` = '".$userID."' AND ".$this->CustomTable.".`internalKey` = '".$userID."'");
@@ -1339,6 +1367,10 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		}
 		
 		$viewUser = $modx->db->getRow($allFields);
+		if (!is_array($viewUser))
+		{
+			$viewUser = array('internalKey' => 0, 'gender' => 0, 'country' => '');
+		}
 		
 		$active_users = $modx->getFullTableName('active_users');
 		$activityCheck = "SELECT * FROM ".$active_users." WHERE `internalKey` = '-".$viewUser['internalKey']."'";
@@ -1364,7 +1396,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		foreach ($viewUser as $column => $setting)
 		{
 			// $setting = html_entity_decode($setting);
-			$needToSplit = strpos($setting, '||');
+			$needToSplit = strpos((string)$setting, '||');
 			if ($needToSplit > 0)
 			{
 				$viewUser[$column] = str_replace('||', ', ', $setting);
@@ -1390,17 +1422,17 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				{
 					$ageDecimal = ((time() - $setting) / (60 * 60 * 24 * 365));
 					$age = substr($ageDecimal, 0, strpos($ageDecimal, "."));
-					$modx->setPlaceholder('view.dob', strftime('%m-%d-%Y', $viewUser['dob']));
+					$modx->setPlaceholder('view.dob', $this->FormatDate('%m-%d-%Y', $viewUser['dob']));
 					$modx->setPlaceholder('view.age', $age);
 				}
 			}
 			if ($column == 'lastlogin')
 			{
-				$modx->setPlaceholder('view.lastlogin', strftime($this->DateFormat, $viewUser['lastlogin']));
+				$modx->setPlaceholder('view.lastlogin', $this->FormatDate($this->DateFormat, $viewUser['lastlogin']));
 			}
 			if ($column == 'thislogin')
 			{
-				$modx->setPlaceholder('view.thislogin', strftime($this->DateFormat, $viewUser['thislogin']));
+				$modx->setPlaceholder('view.thislogin', $this->FormatDate($this->DateFormat, $viewUser['thislogin']));
 			}
 			
 			if ($this->Type !== 'manager')
@@ -1427,7 +1459,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 
 		foreach ($inputHandler as $value)
 		{
-			$dataType = explode(':', $value);
+			$dataType = array_pad(explode(':', $value), 5, '');
 			$label = $dataType[0];
 			$DOMid = $dataType[1];
 			$name = $dataType[2];
@@ -1449,7 +1481,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
 					
 					if (isset($viewUser[$name]))
@@ -1470,7 +1502,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 						
 						else 
 						{
-							if ($option[1] == $_POST[$name])
+							if ($option[1] == $this->PostValue($name, null))
 							{
 								$ph .= "\t".'<option selected="selected" value ="'.$option[1].'">'.$option[0].'</option>'."\n";
 							}
@@ -1505,7 +1537,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
 					if (isset($viewUser[$name]))
 					{
@@ -1536,23 +1568,14 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
-					if (isset($viewUser[$name]))
-					{
-						if ($viewUser[$name] == 'on')
-						{
-							$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" checked="checked" />'."\n";
-						}
-						else
-						{
-							$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" />'."\n";
-						}
-					}
-					else
-					{
-						$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" />'."\n";
-					}
+					// FIX: valore della checkbox configurabile da &inputHandler, es. :id:newsletter:checkbox:(si)
+					// senza valore tra parentesi il browser invia 'on' come prima
+					$cbValue = ($option[1] !== '') ? $option[1] : 'on';
+					$cbValueAttr = ($option[1] !== '') ? ' value="'.htmlspecialchars($option[1], ENT_QUOTES).'"' : '';
+					$cbChecked = (isset($viewUser[$name]) && ($viewUser[$name] == $cbValue || $viewUser[$name] == 'on')) ? ' checked="checked"' : '';
+					$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'"'.$cbValueAttr.$cbChecked.' />'."\n";
 				}
 				$ph .= '</label>'."\n";
 				// Set the Placeholder
@@ -1575,10 +1598,10 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	{
 		global $modx;
 		
-		$me = $modx->getWebUserInfo($modx->db->escape($_POST['me']));
-		$you = $modx->getWebUserInfo($modx->db->escape($_POST['you']));
-		$subject = $modx->db->escape($_POST['subject']);
-		$message = stripslashes(strip_tags($_POST['message']))."\n\n".$modx->config['site_name'];
+		$me = $modx->getWebUserInfo($modx->db->escape($this->PostString('me')));
+		$you = $modx->getWebUserInfo($modx->db->escape($this->PostString('you')));
+		$subject = $modx->db->escape($this->PostString('subject'));
+		$message = stripslashes(strip_tags($this->PostString('message')))."\n\n".$modx->config['site_name'];
 		
 		if (empty($subject) || $subject == '' || empty($message) || $message == '')
 		{
@@ -1622,7 +1645,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		$web_users = $modx->getFullTableName('web_users');
 		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
 		
-		$email = $modx->db->escape(trim($_POST['email'])); // pixelchutes
+		$email = $modx->db->escape(trim($this->PostString('email'))); // pixelchutes
 		if ( empty($email) ) return $this->FormatMessage($this->LanguageArray[0]); // pixelchutes        
         $webpwdreminder_message = $modx->config['webpwdreminder_message'];
         $emailsubject = $modx->config['emailsubject'];
@@ -1650,7 +1673,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			else
 			{
 				//$url = $modx->config['server_protocol'].'://'.$_SERVER['SERVER_NAME'].$modx->makeURL($modx->documentIdentifier,'',"&service=activate&userid=".$this->User['id']."&activationkey=".$newPasswordKey);
-				$url = $_SERVER['HTTP_REFERER']."&service=activate&userid=".$this->User['id']."&activationkey=".$newPasswordKey;
+				$url = (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '')."&service=activate&userid=".$this->User['id']."&activationkey=".$newPasswordKey;
             }
 			
 			$message = str_replace("[+uid+]", $this->User['username'], $webpwdreminder_message);
@@ -1697,11 +1720,11 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		$web_users = $modx->getFullTableName('web_users');
 		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
 		
-		$userid = $modx->db->escape($_REQUEST['userid']);
-		$activationKey = $modx->db->escape($_REQUEST['activationkey']);
-		$passwordKey = $modx->db->escape($_POST['activationpassword']);
-		$newPassword = $modx->db->escape($_POST['newpassword']);
-		$newPasswordConfirm = $modx->db->escape($_POST['newpassword_confirm']); // pixelchutes 1:55 AM 9/19/2007
+		$userid = $modx->db->escape(isset($_REQUEST['userid']) ? $_REQUEST['userid'] : '');
+		$activationKey = $modx->db->escape(isset($_REQUEST['activationkey']) ? $_REQUEST['activationkey'] : '');
+		$passwordKey = $modx->db->escape($this->PostString('activationpassword'));
+		$newPassword = $modx->db->escape($this->PostString('newpassword'));
+		$newPasswordConfirm = $modx->db->escape($this->PostString('newpassword_confirm')); // pixelchutes 1:55 AM 9/19/2007
 		
 		$findUser = "SELECT * FROM ".$web_users." WHERE id='".$userid."'";
 		$userInfo = $modx->db->query($findUser);
@@ -1713,13 +1736,15 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		}
 		
 		$this->User = $modx->db->getRow($userInfo);
-		list($cachePassword, $cacheKey) = explode("|",$this->User['cachepwd']);
+		list($cachePassword, $cacheKey) = array_pad(explode("|", (string)$this->User['cachepwd']), 2, '');
 		
 		if (($passwordKey !== $cachePassword) || ($activationKey !== $cacheKey))
 		{
 			return $this->FormatMessage($this->LanguageArray[16]);
 		}
 		
+		$saveMyPassword = false; // FIX PHP 8: variabili non inizializzate
+		$unblockUser = false;
 		if (!empty($newPassword) && isset($newPassword) && isset($newPasswordConfirm))
 		{
 			if ($newPassword === $newPasswordConfirm)
@@ -1778,7 +1803,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 
 		$this->MessageTemplate = $MessageTemplate;
 		$CurrentUser = $modx->getWebUserInfo($modx->getLoginUserID());
-		$modx->setPlaceholder('user.username', $CurrentUser['username']);
+		$modx->setPlaceholder('user.username', (is_array($CurrentUser) && isset($CurrentUser['username'])) ? $CurrentUser['username'] : '');
 	
 		$web_users = $modx->getFullTableName('web_users');
 		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
@@ -1806,8 +1831,8 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 					else if ($key == 'dob')
 					{
 						// CREDIT : Guillaume for not format an empty date
-						$value==0?'':$modx->setPlaceholder('user.'.$key, strftime('%m-%d-%Y', $value));
-						$modx->setPlaceholder('user.age', strftime('%Y', time() - $value));
+						$value==0?'':$modx->setPlaceholder('user.'.$key, $this->FormatDate('%m-%d-%Y', $value));
+						$modx->setPlaceholder('user.age', $this->AgeFromTimestamp($value)); // FIX: prima restituiva un anno, non l'eta'
 						
 					}
 					else if ($key == 'thislogin' || $key == 'lastlogin')
@@ -1818,7 +1843,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 						}
 						else
 						{
-							$modx->setPlaceholder('user.'.$key, strftime($this->DateFormat, $value));
+							$modx->setPlaceholder('user.'.$key, $this->FormatDate($this->DateFormat, $value));
 						}
 					}
 					else if ($key == 'country')
@@ -1836,7 +1861,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 						$modx->setPlaceholder('user.'.$key, stripslashes($value));						
 					}
 					
-					$needToSplit = strpos($value, '||');
+					$needToSplit = strpos((string)$value, '||');
 					if ($needToSplit > 0)
 					{
 						$CurrentUser[$key] = explode('||', $value);
@@ -1845,18 +1870,18 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			}
 		}
 		$modx->setPlaceholder('user.defaultphoto', 'assets/snippets/webloginpe/userimages/default_user.jpg');
-		$modx->setPlaceholder('request.userid', $_REQUEST['userid']);
-		$modx->setPlaceholder('request.activationkey', $_REQUEST['activationkey']);
+		$modx->setPlaceholder('request.userid', isset($_REQUEST['userid']) ? htmlspecialchars((string)$_REQUEST['userid'], ENT_QUOTES) : '');
+		$modx->setPlaceholder('request.activationkey', isset($_REQUEST['activationkey']) ? htmlspecialchars((string)$_REQUEST['activationkey'], ENT_QUOTES) : '');
 		$modx->setPlaceholder('form.captcha', 'manager/includes/veriword.php');
 		
 		// Handle Special input placeholders.
-		include_once 'assets/snippets/webloginpe/Default Forms/countryCodes.php';
+		include MODX_BASE_PATH.'assets/snippets/webloginpe/Default Forms/countryCodes.php'; // FIX: con include_once alla seconda chiamata (dopo il salvataggio del profilo) le variabili non esistono
 		$inputHandler[9998] = str_replace('[+COUNTRYLABEL+]', $this->LanguageArray[39], $countryCodes);
 		$inputHandler[9999] = str_replace('[+GENDERLABEL+]', $this->LanguageArray[40], $genderCodes);
 
 		foreach ($inputHandler as $value)
 		{
-			$dataType = explode(':', $value);
+			$dataType = array_pad(explode(':', $value), 5, '');
 			$label = $dataType[0];
 			$DOMid = $dataType[1];
 			$name = $dataType[2];
@@ -1878,7 +1903,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
 					if (isset($CurrentUser[$name]))
 					{
@@ -1896,7 +1921,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 						}
 						else 
 						{
-							if ($option[1] == $_POST[$name])
+							if ($option[1] == $this->PostValue($name, null))
 							{
 								$ph .= "\t".'<option selected="selected" value ="'.$option[1].'">'.$option[0].'</option>'."\n";
 							}
@@ -1931,7 +1956,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
 					if (isset($CurrentUser[$name]))
 					{
@@ -1962,23 +1987,14 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 				$options = explode(',', $values);
 				foreach ($options as $eachOption)
 				{
-					$option = explode('(', $eachOption);
+					$option = array_pad(explode('(', $eachOption), 2, '');
 					$option = str_replace(')', '', $option);
-					if (isset($CurrentUser[$name]))
-					{
-						if ($CurrentUser[$name] == 'on')
-						{
-							$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" checked="checked" />'."\n";
-						}
-						else
-						{
-							$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" />'."\n";
-						}
-					}
-					else
-					{
-						$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'" />'."\n";
-					}
+					// FIX: valore della checkbox configurabile da &inputHandler, es. :id:newsletter:checkbox:(si)
+					// senza valore tra parentesi il browser invia 'on' come prima
+					$cbValue = ($option[1] !== '') ? $option[1] : 'on';
+					$cbValueAttr = ($option[1] !== '') ? ' value="'.htmlspecialchars($option[1], ENT_QUOTES).'"' : '';
+					$cbChecked = (isset($CurrentUser[$name]) && ($CurrentUser[$name] == $cbValue || $CurrentUser[$name] == 'on')) ? ' checked="checked"' : '';
+					$ph .= $option[0].' <input type="checkbox" id="'.$DOMid.'" name="'.$name.'"'.$cbValueAttr.$cbChecked.' />'."\n";
 				}
 				$ph .= '</label>'."\n";
 				// Set the Placeholder
@@ -2278,7 +2294,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		    $_SESSION['webnrlogins'] = $this->User['logincount'];
 		    $this->UserWebGroups(); // (TS)
 
-			if ($_POST['rememberme'] == 'on')
+			if ($this->PostValue('rememberme') == 'on')
 			{
 				$cookieName = 'WebLoginPE';
 				$cookieValue = md5($this->User['username']).'|'.$this->User['password'];
@@ -2291,7 +2307,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			{
 				$cookieName = 'WebLoginPE';
 				$cookieValue = md5($this->User['username']).'|'.$this->User['password'];
-				$cookieExpires = time() + $_POST['stayloggedin'];
+				$cookieExpires = time() + (int)$_POST['stayloggedin']; // FIX PHP 8: TypeError con valore non numerico
 				
 				setcookie($cookieName, $cookieValue, $cookieExpires, '/', $_SERVER['SERVER_NAME'], 0);
 			}
@@ -2351,7 +2367,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		}
 		$CurrentUser = $modx->getWebUserInfo($modx->getLoginUserID());
 		
-		if ($_SERVER['HTTP_X_FORWARD_FOR'])
+		if (!empty($_SERVER['HTTP_X_FORWARD_FOR']))
 		{
 			$ip = $_SERVER['HTTP_X_FORWARD_FOR'];
 		}
@@ -2404,6 +2420,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	{
 		global $modx;
 		
+		$Username = (string)$Username; // FIX PHP 8.1
 		$web_users = $modx->getFullTableName('web_users');
 		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
 		
@@ -2499,7 +2516,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		{
 	        $date = getdate();
 	        $day = $date['wday']+1;
-	        if (strpos($modx->config['allowed_days'], $day) === false)
+	        if (strpos($modx->config['allowed_days'], (string)$day) === false)
 			{
 	            return $this->FormatMessage($this->LanguageArray[26]);
 	        }        
@@ -2541,6 +2558,161 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	
 	
 	/**
+	 * PostValue / PostString (FIX PHP 8)
+	 * Lettura di $_POST senza warning "Undefined array key".
+	 */
+	function PostValue($key, $default = '')
+	{
+		return isset($_POST[$key]) ? $_POST[$key] : $default;
+	}
+	
+	function PostString($key)
+	{
+		$value = $this->PostValue($key, '');
+		if (is_array($value))
+		{
+			$value = implode('||', $value);
+		}
+		return (string)$value;
+	}
+	
+	
+	/**
+	 * FormatDate (FIX PHP 8.1+)
+	 * Sostituisce strftime(), deprecata da PHP 8.1. Su PHP < 8.1 usa strftime()
+	 * come prima; da 8.1 converte il formato strftime: i nomi di giorni e mesi
+	 * escono nella lingua del locale (setlocale LC_TIME) se c'e' l'estensione intl,
+	 * altrimenti in inglese come strftime() con locale "C".
+	 *
+	 * @param string $format Formato strftime (es. '%d/%m/%Y')
+	 * @param int $timestamp
+	 * @return string
+	 */
+	function FormatDate($format, $timestamp)
+	{
+		$timestamp = (int)$timestamp;
+		if (PHP_VERSION_ID < 80100 && function_exists('strftime'))
+		{
+			return strftime($format, $timestamp);
+		}
+		
+		$locale = setlocale(LC_TIME, 0);
+		$useIntl = class_exists('IntlDateFormatter') && $locale && $locale !== 'C' && $locale !== 'POSIX';
+		if ($useIntl)
+		{
+			$locale = preg_replace('/[.@].*$/', '', $locale);
+		}
+		
+		return preg_replace_callback('/%([a-zA-Z%])/', function ($m) use ($timestamp, $useIntl, $locale)
+		{
+			$intlPatterns = array('a' => 'EEE', 'A' => 'EEEE', 'b' => 'MMM', 'h' => 'MMM', 'B' => 'MMMM');
+			if ($useIntl && isset($intlPatterns[$m[1]]))
+			{
+				$fmt = new IntlDateFormatter($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, date_default_timezone_get(), IntlDateFormatter::GREGORIAN, $intlPatterns[$m[1]]);
+				$out = $fmt->format($timestamp);
+				if ($out !== false)
+				{
+					return $out;
+				}
+			}
+			switch ($m[1])
+			{
+				case 'a': return date('D', $timestamp);
+				case 'A': return date('l', $timestamp);
+				case 'b':
+				case 'h': return date('M', $timestamp);
+				case 'B': return date('F', $timestamp);
+				case 'C': return sprintf('%02d', floor(date('Y', $timestamp) / 100));
+				case 'd': return date('d', $timestamp);
+				case 'D': return date('m/d/y', $timestamp);
+				case 'e': return sprintf('%2d', date('j', $timestamp));
+				case 'F': return date('Y-m-d', $timestamp);
+				case 'G': return date('o', $timestamp);
+				case 'g': return date('y', $timestamp);
+				case 'H': return date('H', $timestamp);
+				case 'I': return date('h', $timestamp);
+				case 'j': return sprintf('%03d', date('z', $timestamp) + 1);
+				case 'k': return sprintf('%2d', date('G', $timestamp));
+				case 'l': return sprintf('%2d', date('g', $timestamp));
+				case 'm': return date('m', $timestamp);
+				case 'M': return date('i', $timestamp);
+				case 'n': return "\n";
+				case 'p': return date('A', $timestamp);
+				case 'P': return date('a', $timestamp);
+				case 'r': return date('h:i:s A', $timestamp);
+				case 'R': return date('H:i', $timestamp);
+				case 's': return (string)$timestamp;
+				case 'S': return date('s', $timestamp);
+				case 't': return "\t";
+				case 'T': return date('H:i:s', $timestamp);
+				case 'u': return date('N', $timestamp);
+				case 'V': return date('W', $timestamp);
+				case 'w': return date('w', $timestamp);
+				case 'y': return date('y', $timestamp);
+				case 'Y': return date('Y', $timestamp);
+				case 'z': return date('O', $timestamp);
+				case 'Z': return date('T', $timestamp);
+				case '%': return '%';
+			}
+			return $m[0];
+		}, $format);
+	}
+	
+	
+	/**
+	 * AgeFromTimestamp (FIX)
+	 * Eta' in anni da un timestamp di nascita; stringa vuota se non impostata.
+	 */
+	function AgeFromTimestamp($dob)
+	{
+		$dob = (int)$dob;
+		if ($dob == 0)
+		{
+			return '';
+		}
+		$birth = new DateTime('@'.$dob);
+		$birth->setTimezone(new DateTimeZone(date_default_timezone_get()));
+		return (string)$birth->diff(new DateTime('now'))->y;
+	}
+	
+	
+	/**
+	 * DobToInt (FIX strict mode)
+	 * Converte la data di nascita in timestamp intero per la colonna INT `dob`.
+	 * Accetta MM-DD-YYYY, MM/DD/YYYY, MM.DD.YYYY (stesso formato di MakeDateForDb)
+	 * oppure un timestamp gia' numerico. Vuoto o non valido => 0.
+	 *
+	 * @param string $date
+	 * @return int
+	 */
+	function DobToInt($date)
+	{
+		$date = trim((string)$date);
+		if ($date === '')
+		{
+			return 0;
+		}
+		if (preg_match('/^-?\d+$/', $date))
+		{
+			return (int)$date;
+		}
+		$parts = preg_split('#[-/.]#', $date);
+		if (count($parts) != 3)
+		{
+			return 0;
+		}
+		$m = (int)$parts[0];
+		$d = (int)$parts[1];
+		$y = (int)$parts[2];
+		if (!checkdate($m, $d, $y))
+		{
+			return 0;
+		}
+		return (int)mktime(0, 0, 0, $m, $d, $y);
+	}
+
+
+	/**
 	 * CreateUserImage
 	 * Creates a 100px by 100px image for the user profile from a user uploaded image.
 	 * This image is renamed to the username and moved to the webloginpe/userimages/ folder.
@@ -2575,7 +2747,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			$currentWebUser = $modx->getWebUserInfo($modx->getLoginUserID());
 			if ($this->Type == 'manager')
 			{
-				$currentWebUser['username'] = $_POST['username'];
+				$currentWebUser['username'] = $this->PostString('username');
 			}
 		}
 		else
@@ -2583,7 +2755,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 			$currentWebUser['username'] = $this->Username;
 			if ($this->Username == '' || empty($this->Username))
 			{
-				$currentWebUser['username'] = $_POST['username'];
+				$currentWebUser['username'] = $this->PostString('username');
 			}
 		}
 		
@@ -3020,10 +3192,9 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	{
         $allowable_characters = "abcdefghjkmnpqrstuvxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         $ps_len = strlen($allowable_characters);
-        mt_srand((double)microtime()*1000000);
         $pass = "";
         for($i = 0; $i < $length; $i++) {
-            $pass .= $allowable_characters[mt_rand(0,$ps_len-1)];
+            $pass .= $allowable_characters[random_int(0, $ps_len - 1)];
         }
         return $pass;
 	}
@@ -3063,8 +3234,8 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		$parameters = array(
 			'username'		=> $this->Username,
 			'password'		=> $this->Password,
-			'rememberme'	=> $_POST['rememberme'],
-			'stayloggedin'	=> $_POST['stayloggedin']
+			'rememberme'	=> $this->PostValue('rememberme'),
+			'stayloggedin'	=> $this->PostValue('stayloggedin')
 			);
 		$modx->invokeEvent("OnBeforeWebLogin", $parameters);
 	}
@@ -3085,8 +3256,8 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		    'username'      => $this->Username,
 		    'form_password'	=> $this->Password,
 		    'db_password'	=> $this->User['password'],
-		    'rememberme'    => $_POST['rememberme'],
-			'stayloggedin'	=> $_POST['stayloggedin']
+		    'rememberme'    => $this->PostValue('rememberme'),
+			'stayloggedin'	=> $this->PostValue('stayloggedin')
 		);
 		$modx->invokeEvent('OnWebAuthentication', $parameters);
 	}
@@ -3109,7 +3280,7 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 		$parameters = array(
 			'mode'	=> $mode,
 			'user'	=> $user,
-			'username'=>$user['username']  // (TS) SMF connector fix http://modxcms.com/forums/index.php?topic=26565.0
+			'username'=>(is_array($user) && isset($user['username'])) ? $user['username'] : ''  // (TS) SMF connector fix http://modxcms.com/forums/index.php?topic=26565.0
 			);
 		$modx->invokeEvent('OnWebSaveUser', $parameters);
 	}
@@ -3159,9 +3330,9 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	{
 		global $modx;
 		$parameters = array(
-			'userid'		=> $_SESSION['webInternalKey'],
-			'internalKey'	=> $_SESSION['webInternalKey'],
-			'username'		=> $_SESSION['webShortname']
+			'userid'		=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : ''),
+			'internalKey'	=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : ''),
+			'username'		=> (isset($_SESSION['webShortname']) ? $_SESSION['webShortname'] : '')
 			);
 		$modx->invokeEvent('OnBeforeWebLogout', $parameters);
 	}
@@ -3170,9 +3341,9 @@ if ($_POST['username'] == '' || empty($_POST['username']) || trim($_POST['userna
 	{
 		global $modx;
 		//$paramaters = array(
-			//'userid'		=> $_SESSION['webInternalKey'],
-			//'internalKey'	=> $_SESSION['webInternalKey'],
-			//'username'		=> $_SESSION['webShortname']
+			//'userid'		=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : ''),
+			//'internalKey'	=> (isset($_SESSION['webInternalKey']) ? $_SESSION['webInternalKey'] : ''),
+			//'username'		=> (isset($_SESSION['webShortname']) ? $_SESSION['webShortname'] : '')
 		//	);
 		$modx->invokeEvent('OnWebLogout', $logoutparameters);
 	}

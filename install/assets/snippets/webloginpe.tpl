@@ -2,10 +2,10 @@
 /**
  * WebLoginPE
  * 
- * WebLoginPE started off as a rewrite of the MODx weblogin snippet so I could make an AJAX login for my site.
+ * Advanced web user management snippet for Evolution
  *
  * @category 	snippet
- * @version 	1.3.1
+ * @version 	1.3.3
  * @license 	http://www.gnu.org/copyleft/gpl.html GNU Public License (GPL)
  * @internal	@properties 
  * @internal	@modx_category Forms

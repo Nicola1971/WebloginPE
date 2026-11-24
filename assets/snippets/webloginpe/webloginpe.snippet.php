@@ -1,11 +1,11 @@
 <?php
-	/**
-	 * WebLoginPE Snippet 1.3.1
-	 * v1.3.1 Bugfix by Soshite @ MODx CMS Forums & Various Other Forum Members
-	 *
+/**
+	 * WebLoginPE
+	 * v1.3.3 Bugfix by Nicola Lambathakis
+	 *  
 	 * @package WebLoginPE
-	 * @author Scotty Delicious
-	 * @version 1.3.1
+	 * @author Scotty Delicious Bugfix by Nicola Lambathakis
+	 * @version 1.3.3
 	 *
 	 * See the "docs" folder for detailed usage and parameter instructions.
 	 */
@@ -92,12 +92,12 @@
 	$wlpe->ActiveUsers();
 	$wlpe->PlaceHolders($inputHandler, $messageTpl);
 	
-	$modx->regClientStartupScript('assets/snippets/webloginpe/js/ieButtonFix.js');
+	$modx->regClientStartupScript('assets/snippets/webloginpe/js/btnfix.js');
 
-	$service = $_REQUEST['service'];
+	$service = isset($_REQUEST['service']) ? $_REQUEST['service'] : ''; // FIX PHP 8: undefined index
 	if (empty($service) || $service == '')
 	{
-		$service = $_REQUEST['serviceButtonValue'];
+		$service = isset($_REQUEST['serviceButtonValue']) ? $_REQUEST['serviceButtonValue'] : '';
 	}
 	
 	if ($type == 'register')
@@ -381,7 +381,7 @@
                 // Do NOT reload if wlpe->Report indicates success
                  // Added strip_tags() around string which means an error is not thrown regarding a modifier from closing
                 // html tag e.g. if $wlpe_lang[104] contains "</div>" this will fail as "/d" treated as modifier
-                if ( isset( $wlpe->Report ) && !preg_match( "/".strip_tags($wlpe_lang[104])."/i", $wlpe->Report ) )
+                if ( isset( $wlpe->Report ) && stripos( $wlpe->Report, strip_tags($wlpe_lang[104]) ) === false /* FIX: preg_match senza preg_quote */ )
                 {
                     return $displayActivateTpl;
                 }                
@@ -457,4 +457,3 @@
 	{
 		return;
 	}
-?>

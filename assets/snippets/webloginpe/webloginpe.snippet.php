@@ -1,12 +1,8 @@
 <?php
 /**
 	 * WebLoginPE
-	 * v1.3.4 Bugfix by Nicola Lambathakis
+	 * v1.4.0
 	 *  
-	 * @package WebLoginPE
-	 * @author Scotty Delicious Bugfix by Nicola Lambathakis
-	 * @version 1.3.4
-	 *
 	 * See the "docs" folder for detailed usage and parameter instructions.
 	 */
 
@@ -28,16 +24,25 @@
 	include MODX_BASE_PATH.'assets/snippets/webloginpe/webloginpe.templates.php';
 	if (file_exists(MODX_BASE_PATH.'assets/snippets/webloginpe/lang/'.$lang.'.php'))
 	{
-		include_once MODX_BASE_PATH.'assets/snippets/webloginpe/lang/'.$lang.'.php';
+		include MODX_BASE_PATH.'assets/snippets/webloginpe/lang/'.$lang.'.php'; // 1.4.0: include, non include_once (piu' chiamate nella stessa pagina)
 	}
 	else
 	{
-		include_once MODX_BASE_PATH.'assets/snippets/webloginpe/lang/en.php';
+		include MODX_BASE_PATH.'assets/snippets/webloginpe/lang/en.php';
 		$modx->setPlaceholder('wlpe.message', $wlpe_lang[105]);
 		print '[+wlpe.message+]';
 	}
 	
 	$wlpe = new WebLoginPE($wlpe_lang, $dateFormat, $userImageSettings, $type);
+	// 1.4.0: nuovi parametri
+	$wlpe->AllowPhoto = (isset($allowPhoto) && (int)$allowPhoto === 1);
+	$wlpe->RememberDays = isset($rememberDays) ? max(1, (int)$rememberDays) : 30;
+	$wlpe->LegacyMd5 = (isset($legacyMd5) && (int)$legacyMd5 === 1);
+	$wlpe->Csrf = (isset($csrf) && (int)$csrf === 1);
+	if (isset($dobFormat))
+	{
+		$wlpe->SetDobFormat($dobFormat);
+	}
 	$wlpe->CustomTable($customTable, $customFields, $prefixTable, $tableCheck);
 
 	$liHomeId = isset($liHomeId) ? explode(',', $liHomeId) : '';
@@ -72,7 +77,6 @@
 	$tosChunk = isset($tosChunk) ? $wlpe->Template($tosChunk) : $wlpeTos;
 	$modx->setPlaceholder('tos', $tosChunk);
 	
-	$loadJquery = isset($loadJquery) ? $loadJquery : false;
 	$customJs = isset($customJs) ? $customJs : '';
 	
 	if (isset($pruneDays))
@@ -80,11 +84,8 @@
 		$wlpe->PruneUsers($pruneDays);
 	}
 		
-	if ($loadJquery == 'true' || $loadJquery == true || $loadJquery == 1 || $loadJquery == '1') 
-	{
-		$wlpe->RegisterScripts($customJs);
-	}
-	else if (!empty($customJs))
+	// 1.4.0: rimossa la modalita' taconite (&loadJquery)
+	if (!empty($customJs))
 	{
 		$modx->regClientStartupScript($customJs);
 	}
@@ -92,12 +93,20 @@
 	$wlpe->ActiveUsers();
 	$wlpe->PlaceHolders($inputHandler, $messageTpl);
 	
-	$modx->regClientStartupScript('assets/snippets/webloginpe/js/btnfix.js');
+	// 1.4.0: rimosso btnfix.js (fix per Internet Explorer 6/7)
 
 	$service = isset($_REQUEST['service']) ? $_REQUEST['service'] : ''; // FIX PHP 8: undefined index
 	if (empty($service) || $service == '')
 	{
 		$service = isset($_REQUEST['serviceButtonValue']) ? $_REQUEST['serviceButtonValue'] : '';
+	}
+	
+	// 1.4.0: verifica del token CSRF (&csrf=`1`); i template devono contenere [+form.csrf+]
+	$csrfServices = array('login', 'register', 'saveprofile', 'saveprofilesimple', 'confirmdeleteprofile', 'confirmdeleteprofilesimple', 'saveuserprofile', 'confirmdeleteuser', 'messageuser', 'resetpassword', 'activated');
+	if ($wlpe->Csrf && in_array($service, $csrfServices) && !$wlpe->CheckCsrfToken())
+	{
+		$wlpe->FormatMessage($wlpe->CsrfErrorMessage());
+		$service = '';
 	}
 	
 	if ($type == 'register')
@@ -202,7 +211,7 @@
 		{
 			case 'viewprofile':
 				if (in_array('viewprofile', $disableServices)){return;}
-				$wlpe->ViewUserProfile($_REQUEST['username'],$inputHandler);
+				$wlpe->ViewUserProfile($modx->db->escape(isset($_REQUEST['username']) ? (string)$_REQUEST['username'] : ''),$inputHandler); // FIX: escape + PHP 8
 				return $displayViewProfileTpl;
 				break;
 				
@@ -226,13 +235,13 @@
 		{
 			case 'editprofile':
 				if (in_array('editprofile', $disableServices)){return;}
-				$wlpe->ViewUserProfile($_REQUEST['username'],$inputHandler);
+				$wlpe->ViewUserProfile($modx->db->escape(isset($_REQUEST['username']) ? (string)$_REQUEST['username'] : ''),$inputHandler); // FIX: escape + PHP 8
 				return $displayManageProfileTpl;
 				break;
 				
 			case 'saveuserprofile' :
 				if (in_array('saveuserprofile', $disableServices)){return;}
-				$wlpe->SaveUserProfile($_POST['internalKey']);
+				$wlpe->SaveUserProfile(isset($_POST['internalKey']) ? (int)$_POST['internalKey'] : '');
 				$manageUsersPage = $wlpe->ViewAllUsers($displayManageTpl, $displayManageOuterTpl, $usersList);
 				return $manageUsersPage;
 				break;
@@ -245,13 +254,13 @@
 				
 			case 'deleteuser':
 				if (in_array('deleteuser', $disableServices)){return;}
-				$_SESSION['editInternalKey'] = $_POST['internalKey'];
+				$_SESSION['editInternalKey'] = isset($_POST['internalKey']) ? (int)$_POST['internalKey'] : 0;
 				return $displayManageDeleteTpl;
 				break;
 
 			case 'confirmdeleteuser':
 				if (in_array('confirmdeleteuser', $disableServices)){return;}
-				$wlpe->RemoveUserProfileManager($_SESSION['editInternalKey']);
+				$wlpe->RemoveUserProfileManager(isset($_SESSION['editInternalKey']) ? (int)$_SESSION['editInternalKey'] : 0);
 				$manageUsersPage = $wlpe->ViewAllUsers($displayManageTpl, $displayManageOuterTpl, $usersList);
 				unset($_SESSION['editInternalKey']);
 				return $manageUsersPage;
@@ -401,56 +410,6 @@
 				}
 
 		}// [END] Switch : $service for simple.
-	}
-	
-	else if ($type == 'taconite')
-	{
-		switch ($service) 
-		{
-
-			case 'login' :
-				$wlpe->Login($type, $liHomeId);
-
-				if (isset($wlpe->Report)) 
-				{
-					return $wlpe->Report;
-				}
-				return;
-				break;
-
-			case 'logout' :
-				$wlpe->Logout($type, $loHomeId);				
-				return;
-				break;
-
-			case 'register' :
-				if (in_array('register', $disableServices)){return;}
-				$wlpe->Register($regType, $groups, $regRequired, $notify, $notifyTpl, $notifySubject);
-				return $wlpe->Report;
-				break;
-			
-			case 'resetpassword' :
-				if (in_array('resetpassword', $disableServices)){return;}
-				$wlpe->ResetPassword();
-				return $wlpe->Report;
-				break;
-				
-			case 'activated':
-				if (in_array('activated', $disableServices)){return;}
-				$wlpe->ActivateUser();
-				return $wlpe->Report;
-				break;
-					
-			default :
-				if ($modx->getLoginUserID())
-				{
-					return;
-				}
-				else
-				{
-					$wlpe->AutoLogin();
-				}
-		}// [END] Switch : $service for taconite.
 	}
 	
 	else

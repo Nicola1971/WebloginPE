@@ -1,16 +1,11 @@
 <?php
 /**
  * WebLoginPE
- * A progressively enhanced (PE) user management and login snippet for MODx
- * v1.3.1 Bugfix by Soshite @ MODx CMS Forums & Various Other Forum Members
+ * v1.4.0
  *
- * Extra bugfixes not in the repos added by TS. See comments and forum links.
- *
- * @package WebLoginPE
- * @author Scotty Delicious scottydelicious@gmail.com * @version 1.3.1
- * @access public
- * @copyright ©2007-2008 Scotty Delicious http://scottydelicious.com
- **/
+ * @copyright ©2007-2008 Scotty Delicious, 2026 Nicola Lambathakis
+ * @license GPL
+ */
 class WebLoginPE
 {
 	/**
@@ -52,7 +47,7 @@ class WebLoginPE
 	var $loHomeId;
 	
 	/**
-	 * the type of WebLoginPE (simple, register, profile, or taconite)
+	 * the type of WebLoginPE (simple, register, profile, users or manager)
 	 *
 	 * @var string
 	 * @access protected
@@ -151,6 +146,54 @@ class WebLoginPE
 	var $CheckboxFields = array();
 	
 	/**
+	 * 1.4.0: upload della foto profilo abilitato (&allowPhoto, default disattivato)
+	 * @var bool
+	 */
+	var $AllowPhoto = false;
+	
+	/**
+	 * 1.4.0: durata in giorni del cookie "ricordami" (&rememberDays, default 30)
+	 * @var int
+	 */
+	var $RememberDays = 30;
+	
+	/**
+	 * 1.4.0: formato della data di nascita (&dobFormat, default m-d-Y)
+	 * @var string
+	 */
+	var $DobFormat = 'm-d-Y';
+	
+	/**
+	 * 1.4.0: password salvate in MD5 come nelle versioni precedenti (&legacyMd5=`1`)
+	 * @var bool
+	 */
+	var $LegacyMd5 = false;
+	
+	/**
+	 * 1.4.0: verifica del token CSRF sui form (&csrf=`1`)
+	 * @var bool
+	 */
+	var $Csrf = false;
+	
+	/**
+	 * 1.4.0: login automatico da token "ricordami" gia' verificato
+	 * @var bool
+	 */
+	var $TokenLogin = false;
+	
+	/**
+	 * 1.4.0: scadenza del token "ricordami" da rinnovare dopo un login automatico
+	 * @var int
+	 */
+	var $RememberExpires = 0;
+	
+	/**
+	 * 1.4.0: lunghezza delle colonne gia' lette (vedi ColumnLength)
+	 * @var array
+	 */
+	var $ColumnCache = array();
+	
+	/**
 	 * WebLoginPE Class Constructor
 	 *
 	 * @param array $LanguageArray An array of language specific strings.
@@ -207,7 +250,7 @@ class WebLoginPE
 	 * login
 	 * Perform all the necessary functions to establish a secure user session with permissions
 	 *
-	 * @param string $type If type = 'taconite' do not call $this->LoginHomePage().
+	 * @param string $type Type of WebLoginPE call.
 	 * @param string $liHomeId Comma separated list of MODx document ID's to attempt to redirect to after login.
 	 * @return void
 	 * @author Scotty Delicious
@@ -220,7 +263,7 @@ class WebLoginPE
 		$this->liHomeId = $liHomeId;
 		
 		$this->Username = $modx->db->escape(strip_tags($this->PostString('username')));
-		$this->Password = $modx->db->escape(strip_tags($this->PostString('password')));
+		$this->Password = $this->PostString('password'); // 1.4.0: usata solo per la verifica dell'hash, mai nelle query
 		if ($this->Username == '' || $this->Password == '')
 		{
 			$this->FormatMessage($this->LanguageArray[5]);
@@ -246,10 +289,7 @@ class WebLoginPE
 		$this->OnWebLogin();
 		$this->ActiveUsers();
 		$this->UserDocumentGroups();
-		if ($type !== 'taconite')
-		{
-			$this->LoginHomePage();
-		}
+		$this->LoginHomePage();
 	}
 	
 	
@@ -263,46 +303,59 @@ class WebLoginPE
 	{
 		global $modx;
 		
-		$cookieName = 'WebLoginPE';
-		
-		// FIX PHP 8: cookie assente / malformato
-		if (empty($_COOKIE[$cookieName]) || !is_string($_COOKIE[$cookieName]) || strpos($_COOKIE[$cookieName], '|') === false)
+		// 1.4.0: login persistente con token casuale (vedi CreateRememberToken)
+		if (empty($_COOKIE['WebLoginPE']))
 		{
 			return false;
 		}
-		$cookie = explode('|', $_COOKIE[$cookieName], 2);
-		$this->Username = $modx->db->escape($cookie[0]); // FIX sicurezza: il valore del cookie finiva nella query senza escape
-		$this->Password = $cookie[1];
-		
-		$web_users = $modx->getFullTableName('web_users');
-		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
-		
-		$query = "SELECT * FROM ".$web_users.", ".$web_user_attributes." WHERE MD5(".$web_users.".`username`) = '".$this->Username."' AND ".$web_user_attributes.".`internalKey` = ".$web_users.".`id`";
-		$dataSource = $modx->db->query($query);
-		$limit = $modx->db->getRecordCount($dataSource);
-		if ($limit == 0 || $limit > 1)
+		list($selector, $validator) = $this->RememberCookieParts();
+		if ($selector === '')
 		{
-			$this->User = NULL;
+			// cookie delle versioni precedenti (conteneva l'hash della password): non piu' accettato
+			$this->ClearLoginCookie();
 			return false;
 		}
-		else
-		{
-			$this->User = $modx->db->getRow($dataSource);
-			$this->Username = $this->User['username'];
-		}
 		
-		if ($this->User['password'] !== $this->Password){
+		$settings = $modx->getFullTableName('web_user_settings');
+		$rs = $modx->db->query("SELECT `webuser`, `setting_value` FROM ".$settings." WHERE `setting_name` = 'wlpe_rt_".$selector."'");
+		$row = $rs ? $modx->db->getRow($rs) : false;
+		if (!is_array($row))
+		{
+			$this->ClearLoginCookie();
 			return false;
 		}
+		list($expires, $hash) = array_pad(explode(':', (string)$row['setting_value'], 2), 2, '');
+		// il token usato viene sempre eliminato: se valido ne viene emesso uno nuovo
+		$modx->db->query("DELETE FROM ".$settings." WHERE `setting_name` = 'wlpe_rt_".$selector."'");
+		if ((int)$expires < time() || $hash === '' || !hash_equals($hash, hash('sha256', $validator)))
+		{
+			$this->ClearLoginCookie();
+			return false;
+		}
+		
+		$userRs = $modx->db->query("SELECT `username` FROM ".$modx->getFullTableName('web_users')." WHERE `id` = ".(int)$row['webuser']);
+		$userRow = $userRs ? $modx->db->getRow($userRs) : false;
+		$this->User = is_array($userRow) ? $this->QueryDbForUser($userRow['username']) : false;
+		if (!is_array($this->User))
+		{
+			$this->ClearLoginCookie();
+			return false;
+		}
+		$this->Username = $this->User['username'];
+		$this->Password = '';
+		$this->TokenLogin = true;
+		$this->RememberExpires = (int)$expires;
 		
 		$this->UserIsBlocked();
 		$this->Authenticate();
+		if (!empty($this->Report))
+		{
+			$this->ClearLoginCookie();
+			return false;
+		}
 		$this->SessionHandler('start');
 		$this->UserDocumentGroups();
-		if ($this->Type !== 'taconite') // FIX: $type non esisteva in questo metodo
-		{
-			$this->LoginHomePage();
-		}
+		$this->LoginHomePage();
 	}
 	
 	
@@ -310,7 +363,7 @@ class WebLoginPE
 	 * logout
 	 * Destroy the user session and redirect or refresh.
 	 *
-	 * @param string $type If type = 'taconite' do not call $this->LogoutHomePage().
+	 * @param string $type Type of WebLoginPE call.
 	 * @param int $loHomeId MODx document ID to redirect to after logout.
 	 * @return void
 	 * @author Scotty Delicious
@@ -330,10 +383,7 @@ class WebLoginPE
 		$this->StatusToOffline();
 		$this->SessionHandler('destroy');
 		$this->OnWebLogout($logoutparameters); // SMF connector fix http://modxcms.com/forums/index.php?topic=26565.0 c/o tazzydemon and binary_trust
-		if ($type !== 'taconite')
-		{
-			$this->LogoutHomePage();
-		}
+		$this->LogoutHomePage();
 	}
 	
 	
@@ -445,8 +495,8 @@ class WebLoginPE
 		
 		$username = $this->PostString('username');
 		$this->Username = $username;
-	    $password = $modx->db->escape($modx->stripTags($this->PostString('password')));
-		$passwordConfirm = $modx->db->escape($modx->stripTags($this->PostString('password_confirm')));
+	    $password = $this->PostString('password');
+		$passwordConfirm = $this->PostString('password_confirm');
 	    $fullname = $modx->db->escape($modx->stripTags($this->PostString('fullname')));
 	    $email = $modx->db->escape($modx->stripTags($this->PostString('email')));
 	    $phone = $modx->db->escape($modx->stripTags($this->PostString('phone')));
@@ -565,10 +615,6 @@ if (trim($username) == '') // pixelchutes
 				return $this->FormatMessage($this->LanguageArray[3]);
 			}
 			
-			if (md5($password) !== md5($this->PostString('password')))
-			{
-				return $this->FormatMessage($this->LanguageArray[4]);
-			}
 		}
 		
 		$checkUsername = $modx->db->query("SELECT `id` FROM ".$web_users." WHERE `username`='".$username."'");
@@ -600,7 +646,7 @@ if (trim($username) == '') // pixelchutes
 		}
 		
 		// Create the user image if necessary.
-		if (!empty($_FILES['photo']['name']))
+		if ($this->AllowPhoto && !empty($_FILES['photo']['name'])) // 1.4.0: upload solo con &allowPhoto
 		{
 			$photo = $this->CreateUserImage();
 			if (!empty($this->Report))
@@ -622,7 +668,7 @@ if (trim($username) == '') // pixelchutes
 		$this->OnBeforeWebSaveUser($NewUser, array());
 		
 		// If all that crap checks out, now we can create the account.
-		$newUser = "INSERT INTO ".$web_users." (`username`, `password`, `cachepwd`) VALUES ('".$username."', '".md5($password)."', '".$cachepwd."')";
+		$newUser = "INSERT INTO ".$web_users." (`username`, `password`, `cachepwd`) VALUES ('".$username."', '".$modx->db->escape($this->HashPassword($password))."', '".$cachepwd."')";
 		$createNewUser = $modx->db->query($newUser);
 		
 		if (!$createNewUser)
@@ -880,22 +926,16 @@ if (trim($username) == '') // pixelchutes
 		{
 			if ($_POST['password'] === $_POST['password_confirm']) // pixelchutes
 			{
-				if (md5($_POST['password']) === md5($modx->db->escape(strip_tags($this->PostString('password')))))
+				// 1.4.0: la password viene usata cosi' com'e', sono ammessi anche i caratteri speciali
+				if (strlen($this->PostString('password')) > 5)
 				{
-					if (strlen($_POST['password']) > 5)
-					{
-						$passwordElement = "UPDATE ".$web_users." SET `password`='".md5($modx->db->escape($_POST['password']))."' WHERE `id`='".$internalKey."'";
-						$saveMyPassword = $modx->db->query($passwordElement);
-					}
-					else
-					{
-						$this->FormatMessage($this->LanguageArray[3]);
-						return;
-					}
+					$passwordElement = "UPDATE ".$web_users." SET `password`='".$modx->db->escape($this->HashPassword($this->PostString('password')))."' WHERE `id`='".(int)$internalKey."'";
+					$saveMyPassword = $modx->db->query($passwordElement);
+					$this->PurgeRememberTokens($internalKey, true); // 1.4.0: nuova password, i dispositivi "ricordati" vanno riautenticati
 				}
 				else
 				{
-					$this->FormatMessage($this->LanguageArray[4]);
+					$this->FormatMessage($this->LanguageArray[3]);
 					return;
 				}
 			}
@@ -956,7 +996,7 @@ if (trim($username) == '') // pixelchutes
 			}
 			if ($field == 'photo')
 			{
-				if (!empty($_FILES['photo']['name']))
+				if ($this->AllowPhoto && !empty($_FILES['photo']['name'])) // 1.4.0: upload solo con &allowPhoto
 				{
 					$_POST['photo'] = $this->CreateUserImage();
 					if (!empty($this->Report))
@@ -1332,7 +1372,7 @@ if (trim($username) == '') // pixelchutes
 								{
 									$ageDecimal = ((time() - $value) / (60 * 60 * 24 * 365));
 									$age = substr($ageDecimal, 0, strpos($ageDecimal, "."));
-									$value = $this->FormatDate('%m-%d-%Y', $value);
+									$value = $this->FormatDate($this->DobStrftimeFormat(), $value);
 									$eachProfile = str_replace('[+view.age+]', $age, $eachProfile);
 								}
 							}
@@ -1349,7 +1389,7 @@ if (trim($username) == '') // pixelchutes
 							}
 
 
-							$eachProfile = str_replace($placeholder, $value, $eachProfile);
+							$eachProfile = str_replace($placeholder, $this->EscapeOutput($value), $eachProfile); // 1.4.0: escape XSS
 						}
 						$displayUserTemplate .= $eachProfile;
 					}
@@ -1382,7 +1422,7 @@ if (trim($username) == '') // pixelchutes
 		$userID = $modx->db->getRow($findID);
 		$userID = is_array($userID) ? $userID['id'] : 0;
 		$viewUser = $modx->getWebUserInfo($userID);
-		$modx->setPlaceholder('view.username', $viewUser['username']);
+		$modx->setPlaceholder('view.username', is_array($viewUser) ? $this->EscapeOutput($viewUser['username']) : '');
 		$allFields = $modx->db->query("SELECT * FROM ".$web_user_attributes.", ".$this->CustomTable." WHERE ".$web_user_attributes.".`internalKey` = '".$userID."' AND ".$this->CustomTable.".`internalKey` = '".$userID."'");
 		$limit = $modx->db->getRecordCount($allFields);
 		
@@ -1427,7 +1467,7 @@ if (trim($username) == '') // pixelchutes
 				$viewUser[$column] = str_replace('||', ', ', $setting);
 			}
 			
-			$modx->setPlaceholder('view.'.$column, stripslashes($viewUser[$column]));
+			$modx->setPlaceholder('view.'.$column, $this->EscapeOutput(stripslashes($viewUser[$column]))); // 1.4.0: escape XSS
 			
 			if ($column == 'dob')
 			{
@@ -1447,7 +1487,7 @@ if (trim($username) == '') // pixelchutes
 				{
 					$ageDecimal = ((time() - $setting) / (60 * 60 * 24 * 365));
 					$age = substr($ageDecimal, 0, strpos($ageDecimal, "."));
-					$modx->setPlaceholder('view.dob', $this->FormatDate('%m-%d-%Y', $viewUser['dob']));
+					$modx->setPlaceholder('view.dob', $this->FormatDate($this->DobStrftimeFormat(), $viewUser['dob']));
 					$modx->setPlaceholder('view.age', $age);
 				}
 			}
@@ -1691,7 +1731,7 @@ if (trim($username) == '') // pixelchutes
 			$newPassword = $this->GeneratePassword(10);
 			$newPasswordKey = $this->GeneratePassword(10);
 			$this->User = $modx->db->getRow($userInfo);
-			$insertNewPassword = "UPDATE ".$web_users." SET cachepwd='".$newPassword."|".$newPasswordKey."' WHERE id='".$this->User['internalKey']."'";
+			$insertNewPassword = "UPDATE ".$web_users." SET cachepwd='".$modx->db->escape($this->HashTempPassword($newPassword)."|".$newPasswordKey)."' WHERE id='".(int)$this->User['internalKey']."'"; // 1.4.0: password temporanea non in chiaro
 			$setCachePassword = $modx->db->query($insertNewPassword);
 			
 			// build activation url
@@ -1752,8 +1792,8 @@ if (trim($username) == '') // pixelchutes
 		$userid = $modx->db->escape(isset($_REQUEST['userid']) ? $_REQUEST['userid'] : '');
 		$activationKey = $modx->db->escape(isset($_REQUEST['activationkey']) ? $_REQUEST['activationkey'] : '');
 		$passwordKey = $modx->db->escape($this->PostString('activationpassword'));
-		$newPassword = $modx->db->escape($this->PostString('newpassword'));
-		$newPasswordConfirm = $modx->db->escape($this->PostString('newpassword_confirm')); // pixelchutes 1:55 AM 9/19/2007
+		$newPassword = $this->PostString('newpassword'); // 1.4.0: usata solo per l'hash, mai nelle query
+		$newPasswordConfirm = $this->PostString('newpassword_confirm'); // pixelchutes 1:55 AM 9/19/2007
 		
 		$findUser = "SELECT * FROM ".$web_users." WHERE id='".$userid."'";
 		$userInfo = $modx->db->query($findUser);
@@ -1765,9 +1805,13 @@ if (trim($username) == '') // pixelchutes
 		}
 		
 		$this->User = $modx->db->getRow($userInfo);
-		list($cachePassword, $cacheKey) = array_pad(explode("|", (string)$this->User['cachepwd']), 2, '');
+		list($cachePassword, $cacheKey) = array_pad(explode("|", (string)$this->User['cachepwd'], 2), 2, '');
 		
-		if (($passwordKey !== $cachePassword) || ($activationKey !== $cacheKey))
+		// FIX sicurezza (1.3.5): deve esistere una richiesta di reset reale.
+		// Con cachepwd vuoto (utente gia' attivo) o con il solo timestamp di registrazione,
+		// chiavi vuote venivano accettate e si poteva cambiare la password di qualsiasi utente.
+		if ($cachePassword === '' || $cacheKey === '' || strlen($cacheKey) < 10
+			|| !hash_equals($cacheKey, (string)$activationKey) || !$this->VerifyTempPassword((string)$passwordKey, $cachePassword))
 		{
 			return $this->FormatMessage($this->LanguageArray[16]);
 		}
@@ -1778,27 +1822,22 @@ if (trim($username) == '') // pixelchutes
 		{
 			if ($newPassword === $newPasswordConfirm)
 			{
-				if (md5($newPassword) === md5($modx->db->escape($newPassword)))
+				// 1.4.0: la password viene usata cosi' com'e', sono ammessi anche i caratteri speciali
+				if (strlen($newPassword) > 5)
 				{
-					if (strlen($newPassword) > 5)
-					{
-						$passwordElement = "UPDATE ".$web_users." SET `password`='".md5($modx->db->escape($newPassword))."', cachepwd='' WHERE `id`='".$this->User['id']."'";
-						$saveMyPassword = $modx->db->query($passwordElement);
-						
-						$blocks = "UPDATE ".$web_user_attributes." SET `blocked`='0', `blockeduntil`='0' WHERE `internalKey`='".$this->User['id']."'";
-						$unblockUser = $modx->db->query($blocks);
-						
-						// EVENT: OnWebChangePassword
-						$this->OnWebChangePassword($this->User['id'], $this->User['username'], $newPassword);
-					}
-					else
-					{
-						return $this->FormatMessage($this->LanguageArray[3]);
-					}
+					$passwordElement = "UPDATE ".$web_users." SET `password`='".$modx->db->escape($this->HashPassword($newPassword))."', cachepwd='' WHERE `id`='".(int)$this->User['id']."'";
+					$saveMyPassword = $modx->db->query($passwordElement);
+					$this->PurgeRememberTokens($this->User['id'], true); // 1.4.0
+					
+					$blocks = "UPDATE ".$web_user_attributes." SET `blocked`='0', `blockeduntil`='0' WHERE `internalKey`='".$this->User['id']."'";
+					$unblockUser = $modx->db->query($blocks);
+					
+					// EVENT: OnWebChangePassword
+					$this->OnWebChangePassword($this->User['id'], $this->User['username'], $newPassword);
 				}
 				else
 				{
-					return $this->FormatMessage($this->LanguageArray[4]);
+					return $this->FormatMessage($this->LanguageArray[3]);
 				}
 			}
 			else
@@ -1832,7 +1871,7 @@ if (trim($username) == '') // pixelchutes
 
 		$this->MessageTemplate = $MessageTemplate;
 		$CurrentUser = $modx->getWebUserInfo($modx->getLoginUserID());
-		$modx->setPlaceholder('user.username', (is_array($CurrentUser) && isset($CurrentUser['username'])) ? $CurrentUser['username'] : '');
+		$modx->setPlaceholder('user.username', (is_array($CurrentUser) && isset($CurrentUser['username'])) ? $this->EscapeOutput($CurrentUser['username']) : '');
 	
 		$web_users = $modx->getFullTableName('web_users');
 		$web_user_attributes = $modx->getFullTableName('web_user_attributes');
@@ -1860,7 +1899,7 @@ if (trim($username) == '') // pixelchutes
 					else if ($key == 'dob')
 					{
 						// CREDIT : Guillaume for not format an empty date
-						$value==0?'':$modx->setPlaceholder('user.'.$key, $this->FormatDate('%m-%d-%Y', $value));
+						$value==0?'':$modx->setPlaceholder('user.'.$key, $this->FormatDate($this->DobStrftimeFormat(), $value));
 						$modx->setPlaceholder('user.age', $this->AgeFromTimestamp($value)); // FIX: prima restituiva un anno, non l'eta'
 						
 					}
@@ -1887,7 +1926,7 @@ if (trim($username) == '') // pixelchutes
 					}
 					else
 					{
-						$modx->setPlaceholder('user.'.$key, stripslashes($value));						
+						$modx->setPlaceholder('user.'.$key, $this->EscapeOutput(stripslashes($value))); // 1.4.0: escape XSS						
 					}
 					
 					$needToSplit = strpos((string)$value, '||');
@@ -1898,6 +1937,10 @@ if (trim($username) == '') // pixelchutes
 				}
 			}
 		}
+		// 1.4.0: token CSRF
+		$csrfToken = $this->CsrfToken();
+		$modx->setPlaceholder('wlpe.csrf', $csrfToken);
+		$modx->setPlaceholder('form.csrf', '<input type="hidden" name="wlpe_csrf" value="'.$csrfToken.'" />');
 		$modx->setPlaceholder('user.defaultphoto', 'assets/snippets/webloginpe/userimages/default_user.jpg');
 		$modx->setPlaceholder('request.userid', isset($_REQUEST['userid']) ? htmlspecialchars((string)$_REQUEST['userid'], ENT_QUOTES) : '');
 		$modx->setPlaceholder('request.activationkey', isset($_REQUEST['activationkey']) ? htmlspecialchars((string)$_REQUEST['activationkey'], ENT_QUOTES) : '');
@@ -2039,37 +2082,10 @@ if (trim($username) == '') // pixelchutes
 		{
 			foreach ($_POST as $key => $value)
 			{
-				$modx->setPlaceholder('post.'.$key, $value);
+				$modx->setPlaceholder('post.'.$key, $this->EscapeOutput($value)); // 1.4.0: escape XSS
 			}
 		}
 	}                               
-	
-	
-	/**
-	 * RegisterScripts
-	 * Uses the MODx regClientStartupScript() method to load the jQuery scripts for taconite.
-	 * Optionally, it can load a custom js file (passed as a parameter.) if needed.
-	 *
-	 * @param string $customJs URL to a custom javascript file to be loaded.
-	 * @return void
-	 * @author Scotty Delicious
-	 */
-	function RegisterScripts($customJs = '')
-	{
-		global $modx;
-		
-		$jQuery = $modx->config['site_url'].'assets/snippets/webloginpe/js/jquery.packed.js';
-		$jQueryForm = $modx->config['site_url'].'assets/snippets/webloginpe/js/jquery.form.js';
-		$jQueryTaconite = $modx->config['site_url'].'assets/snippets/webloginpe/js/jquery.taconite.js';
-		$modx->regClientStartupScript($jQuery);
-		$modx->regClientStartupScript($jQueryForm);
-		$modx->regClientStartupScript($jQueryTaconite);
-		//$modx->regClientStartupScript($customJs);
-		if (isset($customJs))
-		{
-			$modx->regClientStartupScript($customJs);
-		}
-	}
 	
 	
 	/**
@@ -2095,15 +2111,21 @@ if (trim($username) == '') // pixelchutes
 		// else use a simple authentication scheme comparing MD5 of password to database password.
 	    if (!$authenticate || (is_array($authenticate) && !in_array(TRUE, $authenticate)))
 		{
-	        // check user password - local authentication
-	        if ($this->User['password'] != md5($this->Password))
+			// 1.4.0: password_hash() con compatibilita' MD5; il login da token "ricordami" e' gia' verificato
+			if (!$this->TokenLogin)
 			{
-				// in the case of a persistent login the password will already be a MD5 checksum.
-				if ($this->User['password'] != $this->Password)
+				if (!$this->VerifyPassword($this->Password, $this->User['password']))
 				{
 					$this->LoginErrorCount = 1;
 				}
-	        }
+				elseif ($this->PasswordNeedsUpgrade($this->User['password']))
+				{
+					// conversione automatica della vecchia password MD5
+					$newHash = $this->HashPassword($this->Password);
+					$modx->db->query("UPDATE ".$web_users." SET `password`='".$modx->db->escape($newHash)."' WHERE `id`='".(int)$this->User['internalKey']."'");
+					$this->User['password'] = $newHash;
+				}
+			}
 	    }
 		
 		if ($this->LoginErrorCount == 1)
@@ -2140,6 +2162,11 @@ if (trim($username) == '') // pixelchutes
 	        return;
 	    }
 		
+		// 1.4.0 sicurezza: nuovo ID di sessione dopo l'autenticazione (session fixation)
+		if (session_status() === PHP_SESSION_ACTIVE && !headers_sent())
+		{
+			session_regenerate_id(true);
+		}
 		$CurrentSessionID = session_id();
 
 	    if(!isset($_SESSION['webValidated']))
@@ -2221,11 +2248,6 @@ if (trim($username) == '') // pixelchutes
 			return; //There was an error in the last step
 		}
 		
-		if ($this->Type == 'taconite')
-		{
-			return;
-		}
-		
 		if (!empty($this->liHomeId))
 		{
 			if (is_array($this->liHomeId))
@@ -2275,11 +2297,6 @@ if (trim($username) == '') // pixelchutes
 			return; //There was an error in the last step
 		}
 		
-		if ($this->Type == 'taconite')
-		{
-			return;
-		}
-		
 		if (!empty($this->loHomeId))
 		{
 			$url = $modx->makeURL($this->loHomeId);
@@ -2320,30 +2337,32 @@ if (trim($username) == '') // pixelchutes
 		    $_SESSION['webEmail'] = $this->User['email']; 
 		    $_SESSION['webValidated'] = 1; 
 		    $_SESSION['webInternalKey'] = $this->User['internalKey']; 
-		    $_SESSION['webValid'] = base64_encode((string)$this->Password); 
+		    $_SESSION['webValid'] = ''; // 1.4.0: la password non viene piu' conservata in sessione
 		    $_SESSION['webUser'] = base64_encode((string)$this->Username); 
 		    $_SESSION['webFailedlogins'] = $this->User['failedlogincount']; 
 		    $_SESSION['webLastlogin'] = $this->User['lastlogin']; 
 		    $_SESSION['webnrlogins'] = $this->User['logincount'];
 		    $this->UserWebGroups(); // (TS)
 
-			if ($this->PostValue('rememberme') == 'on')
+			// 1.4.0: "ricordami" con token casuale (il cookie non contiene piu' l'hash della password)
+			$rememberExpires = 0;
+			if ($this->RememberExpires > time())
 			{
-				$cookieName = 'WebLoginPE';
-				$cookieValue = md5($this->User['username']).'|'.$this->User['password'];
-				$cookieExpires = time() + (60 * 60 * 24 * 365 * 5); //5 years
-				
-				setcookie($cookieName, $cookieValue, $cookieExpires, '/', $_SERVER['SERVER_NAME'], 0);
-		    }
-			
-			if (isset($_POST['stayloggedin']) && $_POST['stayloggedin'] !== '')
-			{
-				$cookieName = 'WebLoginPE';
-				$cookieValue = md5($this->User['username']).'|'.$this->User['password'];
-				$cookieExpires = time() + (int)$_POST['stayloggedin']; // FIX PHP 8: TypeError con valore non numerico
-				
-				setcookie($cookieName, $cookieValue, $cookieExpires, '/', $_SERVER['SERVER_NAME'], 0);
+				$rememberExpires = $this->RememberExpires; // rinnovo dopo un login automatico
 			}
+			elseif ($this->PostValue('rememberme') == 'on')
+			{
+				$rememberExpires = time() + (60 * 60 * 24 * max(1, (int)$this->RememberDays));
+			}
+			elseif (isset($_POST['stayloggedin']) && (int)$_POST['stayloggedin'] > 0)
+			{
+				$rememberExpires = time() + (int)$_POST['stayloggedin'];
+			}
+			if ($rememberExpires > time() && is_array($this->User) && !empty($this->User['internalKey']))
+			{
+				$this->CreateRememberToken($this->User['internalKey'], $rememberExpires);
+			}
+			$this->RememberExpires = 0;
 		}
 		
 		if ($directive == 'destroy')
@@ -2366,17 +2385,17 @@ if (trim($username) == '') // pixelchutes
 	            unset($_SESSION['webDocgroups']);   
 	
 	         	$cookieName = 'WebLoginPE';
-				setcookie($cookieName, '', time()-60, '/', $_SERVER['SERVER_NAME'], 0);
+				$this->ClearLoginCookie(); // 1.4.0
 	        }
 	        else
 			{
 	            if (isset($_COOKIE[session_name()]))
 				{
-	                setcookie(session_name(), '', 0, $modx->config['base_url']);
+	                setcookie(session_name(), '', time() - 3600, $modx->config['base_url']); // 1.4.0: con scadenza 0 il cookie non veniva cancellato
 	            }
 				
 				$cookieName = 'WebLoginPE';
-				setcookie($cookieName, '', time()-60, '/', $_SERVER['SERVER_NAME'], 0);
+				$this->ClearLoginCookie(); // 1.4.0
 	            session_destroy();
 	        }
 		}
@@ -2406,7 +2425,7 @@ if (trim($username) == '') // pixelchutes
 		}
 		else
 		{
-			$ip = $_SERVER['REMOTE_ADDR'];
+			$ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 		}
 		
 		$active_users = $modx->getFullTableName('active_users');
@@ -2435,6 +2454,10 @@ if (trim($username) == '') // pixelchutes
 	{
 		global $modx;
 		$CurrentUser = $modx->getWebUserInfo($modx->getLoginUserID());
+		if (!is_array($CurrentUser))
+		{
+			return;
+		}
 		$active_users = $modx->getFullTableName('active_users');
 		$IamOffline = $modx->db->query("UPDATE ".$active_users." SET `lasthit` = '0' WHERE `internalKey` = '-".$CurrentUser['internalKey']."'");
 	}
@@ -2591,6 +2614,279 @@ if (trim($username) == '') // pixelchutes
 	
 	
 	/**
+	 * Password (1.4.0)
+	 * password_hash() (bcrypt) con compatibilita' MD5: le password MD5 esistenti
+	 * vengono verificate e convertite al primo login riuscito.
+	 */
+	function ColumnLength($table, $column)
+	{
+		global $modx;
+		$key = $table.'.'.$column;
+		if (!isset($this->ColumnCache[$key]))
+		{
+			$this->ColumnCache[$key] = 0;
+			$rs = $modx->db->query("SHOW COLUMNS FROM ".$modx->getFullTableName($table)." LIKE '".$modx->db->escape($column)."'");
+			$row = $rs ? $modx->db->getRow($rs) : false;
+			if (is_array($row) && isset($row['Type']))
+			{
+				if (preg_match('/\((\d+)\)/', $row['Type'], $m))
+				{
+					$this->ColumnCache[$key] = (int)$m[1];
+				}
+				elseif (stripos($row['Type'], 'text') !== false)
+				{
+					$this->ColumnCache[$key] = 65535;
+				}
+			}
+		}
+		return $this->ColumnCache[$key];
+	}
+	
+	function UseModernHash()
+	{
+		return !$this->LegacyMd5 && $this->ColumnLength('web_users', 'password') >= 60;
+	}
+	
+	function HashPassword($plain)
+	{
+		return $this->UseModernHash() ? password_hash((string)$plain, PASSWORD_BCRYPT) : md5((string)$plain);
+	}
+	
+	function VerifyPassword($plain, $stored)
+	{
+		$stored = (string)$stored;
+		if ($stored === '')
+		{
+			return false;
+		}
+		if (strpos($stored, '$2y$') === 0)
+		{
+			return password_verify((string)$plain, $stored);
+		}
+		return hash_equals(strtolower($stored), md5((string)$plain));
+	}
+	
+	function PasswordNeedsUpgrade($stored)
+	{
+		if (!$this->UseModernHash())
+		{
+			return false;
+		}
+		return strpos((string)$stored, '$2y$') !== 0 || password_needs_rehash($stored, PASSWORD_BCRYPT);
+	}
+	
+	// Password temporanea del reset (campo cachepwd): hash se la colonna e' abbastanza lunga
+	function HashTempPassword($plain)
+	{
+		if (!$this->LegacyMd5 && $this->ColumnLength('web_users', 'cachepwd') >= 72)
+		{
+			return password_hash((string)$plain, PASSWORD_BCRYPT);
+		}
+		return (string)$plain;
+	}
+	
+	function VerifyTempPassword($plain, $stored)
+	{
+		$stored = (string)$stored;
+		if (strpos($stored, '$2y$') === 0)
+		{
+			return password_verify((string)$plain, $stored);
+		}
+		return $stored !== '' && hash_equals($stored, (string)$plain);
+	}
+	
+	
+	/**
+	 * Token "ricordami" (1.4.0)
+	 * Cookie "selettore:validatore" casuale; in web_user_settings viene salvato solo
+	 * l'hash SHA-256 del validatore con la scadenza. Il cookie non contiene piu'
+	 * l'hash della password.
+	 */
+	function CreateRememberToken($internalKey, $expires)
+	{
+		global $modx;
+		$internalKey = (int)$internalKey;
+		if ($internalKey < 1)
+		{
+			return;
+		}
+		$this->PurgeRememberTokens($internalKey, false);
+		$selector = bin2hex(random_bytes(6));
+		$validator = bin2hex(random_bytes(32));
+		$modx->db->query("INSERT INTO ".$modx->getFullTableName('web_user_settings')." (`webuser`, `setting_name`, `setting_value`) VALUES (".$internalKey.", 'wlpe_rt_".$selector."', '".(int)$expires.":".hash('sha256', $validator)."')");
+		$this->SetLoginCookie($selector.':'.$validator, $expires);
+	}
+	
+	// $all = true: tutti i token dell'utente (cambio password); false: solo quelli scaduti
+	function PurgeRememberTokens($internalKey, $all)
+	{
+		global $modx;
+		$table = $modx->getFullTableName('web_user_settings');
+		$internalKey = (int)$internalKey;
+		if ($all)
+		{
+			$modx->db->query("DELETE FROM ".$table." WHERE `webuser` = ".$internalKey." AND LEFT(`setting_name`, 8) = 'wlpe_rt_'");
+			return;
+		}
+		$rs = $modx->db->query("SELECT `setting_name`, `setting_value` FROM ".$table." WHERE `webuser` = ".$internalKey." AND LEFT(`setting_name`, 8) = 'wlpe_rt_'");
+		while ($rs && ($row = $modx->db->getRow($rs)))
+		{
+			$parts = explode(':', (string)$row['setting_value'], 2);
+			if ((int)$parts[0] < time())
+			{
+				$modx->db->query("DELETE FROM ".$table." WHERE `webuser` = ".$internalKey." AND `setting_name` = '".$modx->db->escape($row['setting_name'])."'");
+			}
+		}
+	}
+	
+	// Selettore valido dal cookie corrente, oppure '' 
+	function RememberCookieParts()
+	{
+		if (!empty($_COOKIE['WebLoginPE']) && is_string($_COOKIE['WebLoginPE']) && preg_match('/^([a-f0-9]{12}):([a-f0-9]{64})$/', $_COOKIE['WebLoginPE'], $m))
+		{
+			return array($m[1], $m[2]);
+		}
+		return array('', '');
+	}
+	
+	
+	/**
+	 * CSRF (1.4.0)
+	 * Il token e' sempre disponibile nei segnaposto [+form.csrf+] e [+wlpe.csrf+];
+	 * viene verificato solo con &csrf=`1`.
+	 */
+	function CsrfToken()
+	{
+		if (session_status() !== PHP_SESSION_ACTIVE)
+		{
+			return '';
+		}
+		if (empty($_SESSION['wlpe_csrf']) || !is_string($_SESSION['wlpe_csrf']))
+		{
+			$_SESSION['wlpe_csrf'] = bin2hex(random_bytes(32));
+		}
+		return $_SESSION['wlpe_csrf'];
+	}
+	
+	function CheckCsrfToken()
+	{
+		$sent = $this->PostString('wlpe_csrf');
+		return $sent !== '' && isset($_SESSION['wlpe_csrf']) && is_string($_SESSION['wlpe_csrf']) && hash_equals($_SESSION['wlpe_csrf'], $sent);
+	}
+	
+	function CsrfErrorMessage()
+	{
+		return isset($this->LanguageArray[43]) ? $this->LanguageArray[43] : 'The form has expired. Please reload the page and try again.';
+	}
+	
+	
+	/**
+	 * EscapeOutput (1.4.0)
+	 * Escape HTML dei valori mostrati nei segnaposto, senza ricodificare le entita'
+	 * gia' presenti nei dati salvati, e neutralizzazione dei tag di Evolution.
+	 */
+	function EscapeOutput($value)
+	{
+		global $modx;
+		if (is_array($value))
+		{
+			$value = implode(', ', $value);
+		}
+		$charset = !empty($modx->config['modx_charset']) ? $modx->config['modx_charset'] : 'UTF-8';
+		$value = htmlspecialchars((string)$value, ENT_QUOTES, $charset, false);
+		return str_replace(array('[', ']', '{', '}', '`'), array('&#91;', '&#93;', '&#123;', '&#125;', '&#96;'), $value);
+	}
+	
+	
+	/**
+	 * IsHttps (1.4.0)
+	 */
+	function IsHttps()
+	{
+		global $modx;
+		if (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+		{
+			return true;
+		}
+		if (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+		{
+			return true;
+		}
+		if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+		{
+			return true;
+		}
+		return isset($modx->config['server_protocol']) && $modx->config['server_protocol'] === 'https';
+	}
+	
+	
+	/**
+	 * SetLoginCookie / ClearLoginCookie (1.4.0)
+	 * Cookie "ricordami" con HttpOnly, SameSite=Lax e Secure su HTTPS.
+	 */
+	function SetLoginCookie($value, $expires)
+	{
+		setcookie('WebLoginPE', $value, array(
+			'expires'  => (int)$expires,
+			'path'     => '/',
+			'secure'   => $this->IsHttps(),
+			'httponly' => true,
+			'samesite' => 'Lax'
+		));
+	}
+	
+	function ClearLoginCookie()
+	{
+		global $modx;
+		list($selector) = $this->RememberCookieParts();
+		if ($selector !== '')
+		{
+			$modx->db->query("DELETE FROM ".$modx->getFullTableName('web_user_settings')." WHERE `setting_name` = 'wlpe_rt_".$selector."'");
+		}
+		$past = time() - 3600;
+		setcookie('WebLoginPE', '', array(
+			'expires'  => $past,
+			'path'     => '/',
+			'secure'   => $this->IsHttps(),
+			'httponly' => true,
+			'samesite' => 'Lax'
+		));
+		// cookie creati dalle versioni precedenti, con il dominio esplicito
+		if (!empty($_SERVER['SERVER_NAME']))
+		{
+			setcookie('WebLoginPE', '', $past, '/', $_SERVER['SERVER_NAME']);
+		}
+	}
+	
+	
+	/**
+	 * SetDobFormat / DobStrftimeFormat (1.4.0)
+	 * Formato della data di nascita: d, m, Y separati da - / oppure . (es. d-m-Y)
+	 */
+	function SetDobFormat($format)
+	{
+		if (preg_match('#^([dmY])([-/.])([dmY])\2([dmY])$#', (string)$format, $m) && count(array_unique(array($m[1], $m[3], $m[4]))) == 3)
+		{
+			$this->DobFormat = $format;
+		}
+	}
+	
+	function DobStrftimeFormat()
+	{
+		return str_replace(array('d', 'm', 'Y'), array('%d', '%m', '%Y'), $this->DobFormat);
+	}
+	
+	
+	/**
+	 * IsUploadedFile (1.4.0) - separato per poterlo sostituire nei test
+	 */
+	function IsUploadedFile($file)
+	{
+		return is_uploaded_file($file);
+	}
+	
+	
+	/**
 	 * FieldSubmitted (FIX issue #5)
 	 * True se il campo e' stato inviato dal form. Le checkbox definite in
 	 * &inputHandler contano sempre come inviate (non spuntate il browser non le invia),
@@ -2600,7 +2896,7 @@ if (trim($username) == '') // pixelchutes
 	{
 		if ($field == 'photo')
 		{
-			return !empty($_FILES['photo']['name']);
+			return $this->AllowPhoto && !empty($_FILES['photo']['name']);
 		}
 		return isset($_POST[$field]) || isset($this->CheckboxFields[$field]);
 	}
@@ -2750,9 +3046,19 @@ if (trim($username) == '') // pixelchutes
 		{
 			return 0;
 		}
-		$m = (int)$parts[0];
-		$d = (int)$parts[1];
-		$y = (int)$parts[2];
+		// 1.4.0: ordine secondo &dobFormat; AAAA-MM-GG (input type="date") riconosciuto sempre
+		if (strlen(trim($parts[0])) == 4)
+		{
+			$order = array('Y', 'm', 'd');
+		}
+		else
+		{
+			$order = preg_split('#[-/.]#', $this->DobFormat);
+		}
+		$values = array_combine($order, array_map('intval', $parts));
+		$m = $values['m'];
+		$d = $values['d'];
+		$y = $values['Y'];
 		if (!checkdate($m, $d, $y))
 		{
 			return 0;
@@ -2774,116 +3080,129 @@ if (trim($username) == '') // pixelchutes
 	{
 		global $modx;
 		
-		$imageAttributes = str_replace(', ', ',', $this->UserImageSettings);
-		$imageAttributes = explode(',', $imageAttributes);
+		// 1.4.0 sicurezza: il file caricato non viene mai spostato nella root del sito,
+		// il tipo viene verificato sul contenuto reale (non sul MIME dichiarato dal browser),
+		// il nome del file e' generato dallo username e l'immagine viene sempre ricodificata.
+		$imageAttributes = array_pad(explode(',', str_replace(' ', '', (string)$this->UserImageSettings)), 3, 0);
+		$maxSize = (int)$imageAttributes[0];
+		$maxWidth = max(1, (int)$imageAttributes[1]);
+		$maxHeight = max(1, (int)$imageAttributes[2]);
 		
-		if ($_FILES['photo']['size'] >= $imageAttributes[0])
-		{
-			$sizeInKb = round($imageAttributes[0] / 1024);
-			$sizeError = str_replace('[+000+]', $sizeInKb, $this->LanguageArray[28]);
-			return $this->FormatMessage($sizeError);
-		}
-		
-		$userImage = $modx->config['base_path'].strtolower(str_replace(' ', '-', basename( $_FILES['photo']['name'])));
-		if (!move_uploaded_file($_FILES['photo']['tmp_name'], $userImage))
+		if (!isset($_FILES['photo']['tmp_name'], $_FILES['photo']['error']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK || !$this->IsUploadedFile($_FILES['photo']['tmp_name']))
 		{
 			return $this->FormatMessage($this->LanguageArray[29]);
 		}
 		
+		if ($maxSize > 0 && $_FILES['photo']['size'] >= $maxSize)
+		{
+			$sizeInKb = round($maxSize / 1024);
+			$sizeError = str_replace('[+000+]', $sizeInKb, $this->LanguageArray[28]);
+			return $this->FormatMessage($sizeError);
+		}
+		
+		$tmpFile = $_FILES['photo']['tmp_name'];
+		$info = @getimagesize($tmpFile);
+		$extensions = array(IMAGETYPE_JPEG => '.jpg', IMAGETYPE_GIF => '.gif', IMAGETYPE_PNG => '.png');
+		if ($info === false || !isset($extensions[$info[2]]) || $info[0] < 1 || $info[1] < 1 || ($info[0] * $info[1]) > 40000000)
+		{
+			return $this->FormatMessage($this->LanguageArray[30]);
+		}
+		if (!function_exists('imagecreatetruecolor'))
+		{
+			return $this->FormatMessage($this->LanguageArray[29]);
+		}
+		$width = (int)$info[0];
+		$height = (int)$info[1];
+		$imageType = $info[2];
+		$ext = $extensions[$imageType];
+		
 		// License and registration ma'am. I need to se an ID!
+		$username = '';
 		if ($modx->getLoginUserID())
 		{
 			$currentWebUser = $modx->getWebUserInfo($modx->getLoginUserID());
+			$username = is_array($currentWebUser) ? $currentWebUser['username'] : '';
 			if ($this->Type == 'manager')
 			{
-				$currentWebUser['username'] = $this->PostString('username');
+				$username = $this->PostString('username');
 			}
 		}
 		else
 		{
-			$currentWebUser['username'] = $this->Username;
-			if ($this->Username == '' || empty($this->Username))
+			$username = ($this->Username != '') ? $this->Username : $this->PostString('username');
+		}
+		$fileBase = preg_replace('/[^a-z0-9_-]/', '', str_replace(' ', '_', strtolower((string)$username)));
+		if ($fileBase === '')
+		{
+			$fileBase = 'user_'.md5(uniqid('', true));
+		}
+		
+		switch ($imageType)
+		{
+			case IMAGETYPE_JPEG: $image = @imagecreatefromjpeg($tmpFile); break;
+			case IMAGETYPE_GIF:  $image = @imagecreatefromgif($tmpFile);  break;
+			default:             $image = @imagecreatefrompng($tmpFile);  break;
+		}
+		if (!$image)
+		{
+			return $this->FormatMessage($this->LanguageArray[30]);
+		}
+		
+		// Ridimensiona senza ingrandire
+		$newWidth = $width;
+		$newHeight = $height;
+		$wm = $width / $maxWidth;
+		$hm = $height / $maxHeight;
+		if ($wm > 1 || $hm > 1)
+		{
+			if ($wm > $hm)
 			{
-				$currentWebUser['username'] = $this->PostString('username');
+				$newWidth = $maxWidth;
+				$newHeight = $height / $wm;
+			}
+			else
+			{
+				$newHeight = $maxHeight;
+				$newWidth = $width / $hm;
+			}
+		}
+		$newWidth = max(1, (int)round($newWidth));
+		$newHeight = max(1, (int)round($newHeight));
+		
+		$image_p = imagecreatetruecolor($newWidth, $newHeight);
+		if ($imageType != IMAGETYPE_JPEG)
+		{
+			imagealphablending($image_p, false);
+			imagesavealpha($image_p, true);
+			$trans = imagecolorallocatealpha($image_p, 255, 255, 255, 127);
+			imagefill($image_p, 0, 0, $trans);
+		}
+		imagecopyresampled($image_p, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+		
+		$relativeDir = 'assets/snippets/webloginpe/userimages/';
+		$filePath = $modx->config['base_path'].$relativeDir.$fileBase.$ext;
+		switch ($imageType)
+		{
+			case IMAGETYPE_JPEG: $saved = imagejpeg($image_p, $filePath, 90); break;
+			case IMAGETYPE_GIF:  $saved = imagegif($image_p, $filePath);      break;
+			default:             $saved = imagepng($image_p, $filePath, 6);   break;
+		}
+		if (!$saved)
+		{
+			return $this->FormatMessage($this->LanguageArray[29]);
+		}
+		
+		// Rimuove una eventuale foto precedente con estensione diversa
+		foreach ($extensions as $otherExt)
+		{
+			$otherFile = $modx->config['base_path'].$relativeDir.$fileBase.$otherExt;
+			if ($otherExt !== $ext && is_file($otherFile))
+			{
+				@unlink($otherFile);
 			}
 		}
 		
-		// Get dimensions and set new ones.
-		list($width, $height) = getimagesize($userImage);
-		$new_width = $imageAttributes[1];
-		$new_height = $imageAttributes[2];
-		
-		$wm = $width / $new_width;
-		$hm = $height / $new_height;
-		if ($wm > 1 || $hm > 1) // (don't magnify a smaller image)
-		{
-			if ($wm > $hm) $new_height = $height / $wm;
-			else $new_width = $width / $hm;
-		}
-		else { $new_width = $width; $new_height = $height; } // (must set the original size)
-
-		// Resample
-		$image_p = imagecreatetruecolor($new_width, $new_height);
-		
-		switch ($_FILES['photo']['type'])
-		{
-			case 'image/jpeg':
-			case 'image/jpg': // added support for .jpg to the "default" support for .jpeg, so WLPE doesn't give a filetype error
-			case 'image/pjpeg': // fix for IE6, which handles the .jpg filetype incorrectly
-				$image = imagecreatefromjpeg($userImage);
-				$ext = '.jpg';
-				break;
-				
-			case 'image/gif':
-				$image = imagecreatefromgif($userImage);
-				imageSaveAlpha($image, true);
-				imagesavealpha($image_p, true);
-				$trans = imagecolorallocatealpha($image_p,255,255,255,127);
-				imagefill($image_p,0,0,$trans);
-				$ext = '.gif';
-				break;
-				
-			case 'image/png':
-				$image = imagecreatefrompng($userImage);
-				imageSaveAlpha($image, true);
-				imagesavealpha($image_p, true);
-				$trans = imagecolorallocatealpha($image_p,255,255,255,127);
-				imagefill($image_p,0,0,$trans);
-				$ext = '.png';
-				break;
-				
-			default	:
-				return $this->FormatMessage($this->LanguageArray[30]);
-				break;
-		}
-		imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
-
-		// Output
-		$userImageFilePath = $modx->config['base_path'].'assets/snippets/webloginpe/userimages/'.str_replace(' ', '_', strtolower($currentWebUser['username'])).$ext;
-		//$userImageFileURL = $modx->config['site_url'].'assets/snippets/webloginpe/userimages/'.str_replace(' ', '_', strtolower($currentWebUser['username'])).$ext;
-		$userImageFileURL = 'assets/snippets/webloginpe/userimages/'.str_replace(' ', '_', strtolower($currentWebUser['username'])).$ext;
-		
-		switch ($_FILES['photo']['type'])
-		{
-			case 'image/jpeg':
-				imagejpeg($image_p, $userImageFilePath, 100);
-				break;
-				
-			case 'image/gif':
-				imagegif($image_p, $userImageFilePath);
-				break;
-				
-			case 'image/png':
-				imagepng($image_p, $userImageFilePath, 0);
-				break;
-				
-			default	:
-				imagejpeg($image_p, $userImageFilePath, 100);
-		}
-		
-		unlink($userImage);
-		
-		return $userImageFileURL;
+		return $relativeDir.$fileBase.$ext;
 	}
 	
 	

@@ -34,7 +34,7 @@
 		<div id="content">
 			<h4>The WebLoginPE API <span class="sidenote">(Application Programming Interface)</span></h4>
 			<p>
-				WebLoginPE is an Object Oriented PHP script. If you would like to extend WebLoginPE please use this document as a reference to it's API. If you are interested in extending the function of WebLoginPE through MODx Plugins, WebLoginPE invokes a <a href="#events">suite of events</a> throughout it's services that you can take advantage of.
+				WebLoginPE is an Object Oriented PHP script. If you would like to extend WebLoginPE please use this document as a reference to it's API. If you are interested in extending the function of WebLoginPE through EVO Plugins, WebLoginPE invokes a <a href="#events">suite of events</a> throughout it's services that you can take advantage of.
 			</p>
 			<p>
 				Instantiation of the WebLoginPE object has 4 parameters, a Language array (required), a date format (optional), user image settings (optional), and type (optional).
@@ -64,7 +64,7 @@
 					
 					<div class="example">
 						<h6>liHomeId</h6>
-						A comma separated list of MODx document IDs to attempt to redirect the user to after login.
+						A comma separated list of EVO document IDs to attempt to redirect the user to after login.
 						<br/>
 						<br/>@var string
 						<br/>@access public
@@ -74,7 +74,7 @@
 					
 					<div class="example">
 						<h6>loHomeId</h6>
-						The MODx document ID to redirect the user to after logout.
+						The EVO document ID to redirect the user to after logout.
 						<br/>
 						<br/>@var string
 						<br/>@access public
@@ -294,7 +294,7 @@
 						Perform all the necessary functions to establish a secure user session with permissions
 						<br/>
 						<br/>@param string $type The WebLoginPE type.
-						<br/>@param string $liHomeId Comma separated list of MODx document ID's to attempt to redirect to after login.
+						<br/>@param string $liHomeId Comma separated list of EVO document ID's to attempt to redirect to after login.
 						<br/>@return void
 						<br/>@author Scotty Delicious
 					</div>
@@ -313,7 +313,7 @@
 						Destroy the user session and redirect or refresh.
 						<br/>
 						<br/>@param string $type The WebLoginPE type.
-						<br/>@param int $loHomeId MODx document ID to redirect to after logout.
+						<br/>@param int $loHomeId EVO document ID to redirect to after logout.
 						<br/>@return void
 						<br/>@author Scotty Delicious
 					</div>
@@ -428,7 +428,7 @@
 					
 					<div class="example">
 						<h6>PlaceHolders( array $inputHandler, string $MessageTemplate )</h6>
-						Sets place holders using the MODx method setPlaceholder() for fields in web_user_attributes, the extended table, the submitted form ([+post.*+]) and the CSRF token ([+form.csrf+]).
+						Sets place holders using the EVO method setPlaceholder() for fields in web_user_attributes, the extended table, the submitted form ([+post.*+]) and the CSRF token ([+form.csrf+]).
 						<br/>
 						<br/>@param array $inputHandler An array of inputs to... uhh... handle?
 						<br/>@param string $MessageTemplate The template for $this->Report.
@@ -476,7 +476,7 @@
 					
 					<div class="example">
 						<h6>OnBeforeWebLogin()</h6>
-						Invokes the MODx event OnBeforeWebLogin.
+						Invokes the EVO event OnBeforeWebLogin.
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -492,7 +492,7 @@
 					
 					<div class="example">
 						<h6>OnBeforeWebLogout()</h6>
-						Invokes the MODx event OnBeforeWebLogout
+						Invokes the EVO event OnBeforeWebLogout
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious
@@ -500,7 +500,7 @@
 					
 					<div class="example">
 						<h6>OnWebLogout()</h6>
-						Invokes the MODx event OnWebLogout
+						Invokes the EVO event OnWebLogout
 						<br/>
 						<br/>@return void
 						<br/>@author Scotty Delicious

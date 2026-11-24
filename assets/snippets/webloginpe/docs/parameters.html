@@ -91,7 +91,7 @@
 				<div class="parameter">
 					<h5>&amp;customTable, &amp;customFields</h5>
 					<p class="details">
-						For total control, WebLoginPE creates a table in your MODx database to store as many user attributes as you want. The default name for this table is 'web_user_attributes_extended', but you can override that with the customTable parameter. You can specify an unlimited amount of column names for this table using the customFields parameter.
+						For total control, WebLoginPE creates a table in your EVO database to store as many user attributes as you want. The default name for this table is 'web_user_attributes_extended', but you can override that with the customTable parameter. You can specify an unlimited amount of column names for this table using the customFields parameter.
 					</p>
 					<div class="example">
 						[!WebLoginPE? &amp;customTable=`my_web_users` &amp;customFields=`website,aim,msn,city,address1`!]
@@ -102,7 +102,7 @@
 				<div class="parameter">
 					<h5>&amp;prefixTable</h5>
 					<p class="details">
-						WebLoginPE will create a table for storing extended user attributes, but if you have already created your own table (and specified it in &amp;customTable) and it does not use the table prefix you entered when you installed MODx, you can use &amp;prefixTable=`0` (default is 1) and WebLoginPE will not auto append the MODx table prefix to the table when it searches for it.
+						WebLoginPE will create a table for storing extended user attributes, but if you have already created your own table (and specified it in &amp;customTable) and it does not use the table prefix you entered when you installed MODx, you can use &amp;prefixTable=`0` (default is 1) and WebLoginPE will not auto append the EVO table prefix to the table when it searches for it.
 					</p>
 					<div class="example">
 						[!WebLoginPE? &amp;customTable=`a_table_i_created` &amp;prefixTable=`0`!]

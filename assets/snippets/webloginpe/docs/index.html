@@ -31,7 +31,7 @@
 		<div id="content">
 			<h4>WebLoginPE v. 1.4.0</h4>
 			<p>
-				WebLoginPE is a progressively enhanced (PE), advanced web user management snippet for MODx. WebLoginPE manages user registration, activation, login, logout, password recovery, extended profiling, profile editing, viewing and contacting other users, and user profile removal. WebLoginPE started off as a rewrite of the MODx weblogin snippet so I could make an AJAX login for my site.
+				WebLoginPE is a progressively enhanced (PE), advanced web user management snippet for Evolution CMS. WebLoginPE manages user registration, activation, login, logout, password recovery, extended profiling, profile editing, viewing and contacting other users, and user profile removal. WebLoginPE started off as a rewrite of the EVO weblogin snippet so I could make an AJAX login for my site.
 			</p>
 			<p>
 				WebLoginPE is easy to setup and use, but extremely customizable. You can let WebLoginPE provide the forms and display templates for every view the user might see, or you can use a chunk to customize ANY view. If you are so inclined, you can manage how WebLoginPE will handle selects, radios and checkboxes so that the user's choice is remembered and already selected/checked when they view or edit their profile.
@@ -54,8 +54,8 @@
 			</ul>
 			<h4>Installation/Upgrade</h4>
 			<ol><h5>New Installation</h5>
-				<li>Upload the "webloginpe" folder and all it's contents to /assets/snippets/ in your MODx installation.</li>
-				<li>Log into the MODx Manager.</li>
+				<li>Upload the "webloginpe" folder and all it's contents to /assets/snippets/ in your EVO installation.</li>
+				<li>Log into the EVO Manager.</li>
 				<li>Go to "Resources" &gt; "Manage Resources" &gt; "snippets" and click "New snippet"</li>
 				<li>Give this snippet a name of <code>WebLoginPE</code> and a description of <code>&lt;strong&gt;1.4.0&lt;/strong&gt; A progressively enhanced, complete Web User management snippet.</code></li>
 				<li>Open the file "webloginpe.snippet.php" and copy it's contents to the "Snippet code" area back in the manager.</li>
@@ -65,7 +65,7 @@
 				<li>Read the <strong>"Upgrading from 1.3.x"</strong> section of the README: 1.4.0 changes some default behaviours (photo upload disabled by default, "remember me" users have to log in once more, escaped placeholders).</li>
 				<li>Upload "webloginpe.class.php" and the "lang" folder to "/assets/snippets/webloginpe" in your Evolution installation and OVERWRITE or REPLACE the existing files.</li>
 				<li>Paste the NEW contents of webloginpe.snippet.php into the existing WebLoginPE snippet as described above in "New Installation".</li>
-				<li>The files used only by the removed Taconite mode (jquery.packed.js, jquery.form.js, jquery.taconite.js) and btnfix.js can be deleted from the "js" folder. Keep jquery-1.1.3.1.js and jquery.corner2.js if you keep this documentation, which uses them.</li>
+				<li>The "taconite XML examples" folder and the files used only by the removed Taconite mode (jquery.packed.js, jquery.form.js, jquery.taconite.js) and btnfix.js in the "js" folder can be deleted. Keep jquery-1.1.3.1.js and jquery.corner2.js if you keep this documentation, which uses them.</li>
 			</ol>
 			
 			<h4>Change Log</h4>
@@ -100,11 +100,11 @@
 			
 			<ol><h5>09/13/2007 v. 1.3.0</h5>
 				<li><strong>New Parameter:<a href="parameters.html#disableServices"> &amp;disableServices</a></strong> which will accept a comma separated list of services to disable. You can disable individual services like "deleteprofile" and "viewprofile" as well as entire types like "register" and "users".</li>
-				<li><strong>New Parameter: <a href="parameters.html#prefixTable">&amp;prefixTable</a></strong> If your custom table does not use the MODx table prefix, you can use &amp;prefixTable=`0` (default is 1).</li>
+				<li><strong>New Parameter: <a href="parameters.html#prefixTable">&amp;prefixTable</a></strong> If your custom table does not use the EVO table prefix, you can use &amp;prefixTable=`0` (default is 1).</li>
 				<li><strong>New Parameter: <a href="parameters.html#usersList">&amp;usersList</a></strong> lets you specify multiple lists of users and a format for each list on &amp;type=`users` and &amp;type=`manager`.</li>
 				<li><strong>New Parameter: <a href="parameters.html#tableCheck">&amp;tableCheck</a></strong> When you run WebLoginPE, it checks for the existence of the extra user attributes table and creates it if it does not exist. In 1.3.0 it also creates some new Web Access Service Events for plugins if they do not already exist. By setting &amp;tableCheck to 0 (default is 1) you can skip these checks for a little speed bump.</li>
 				<li><strong>New Type: <a href="parameters.html#type">&amp;type=`manager`</a></strong> displays a list of web users with links to edit their profile or delete their profile. Definitely use Access Permissions on this page!</li>
-				<li>Added MODx System Events for most services. See the <a href="api.html#events">API documentation</a> for full details.</li>
+				<li>Added EVO System Events for most services. See the <a href="api.html#events">API documentation</a> for full details.</li>
 				<li>Print CSS by Dimitri Hilverda (Dimmy) added to documentation</li>
 			</ol>
 			

@@ -8,7 +8,7 @@
 
 ### Files
 - Replace `webloginpe.class.php`, `webloginpe.snippet.php` and the language files in `lang/`: the class and the snippet must be updated together.
-- The jQuery/Taconite files in `js/` and `btnfix.js` are no longer used and can be deleted.
+- The files used only by the removed Taconite mode (`js/jquery.packed.js`, `js/jquery.form.js`, `js/jquery.taconite.js`) and `js/btnfix.js` can be deleted. Keep `js/jquery-1.1.3.1.js` and `js/jquery.corner2.js` if you ship the HTML documentation in `docs/`, which uses them.
 - Custom language files need the new string `$wlpe_lang[43]` (expired form message). If it is missing, an English fallback is used.
 
 ### New parameters in 1.4.0

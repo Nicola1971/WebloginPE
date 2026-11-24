@@ -1,14 +1,57 @@
-# WebLoginPE 1.3.4
+# WebLoginPE 1.4
 
 ### Advanced web user management snippet for Evolution 1.4x
 
 ## Upgrading from 1.3.x
 
-> **1.4.0 is a security release.** It fixes a vulnerability in the profile photo upload that allowed uploading arbitrary files: all 1.3.x installations should upgrade. Read the behaviour changes below before upgrading.
+> **1.4.0 is a security release.** It fixes a vulnerability introduced in 1.3.3 that allowed changing the password of any active user through the activation service, and a vulnerability in the profile photo upload that allowed uploading arbitrary files. All 1.3.x installations should upgrade. Read the behaviour changes below before upgrading.
 
 ### Files
-- Replace both `assets/snippets/webloginpe/webloginpe.class.php` and `assets/snippets/webloginpe/webloginpe.snippet.php`: the two files must be updated together.
-- Snippet parameters and templates from 1.3.x keep working without changes.
+- Replace `webloginpe.class.php`, `webloginpe.snippet.php` and the language files in `lang/`: the class and the snippet must be updated together.
+- The jQuery/Taconite files in `js/` and `btnfix.js` are no longer used and can be deleted.
+- Custom language files need the new string `$wlpe_lang[43]` (expired form message). If it is missing, an English fallback is used.
+
+### New parameters in 1.4.0
+
+| Parameter | Default | Description |
+|---|---|---|
+| `&allowPhoto` | `0` | Set to `1` to enable the profile photo upload. **Disabled by default**: if your forms use the `photo` field, add `&allowPhoto=`1`` or the upload is ignored. |
+| `&rememberDays` | `30` | Lifetime in days of the "remember me" login (previously 5 years). |
+| `&dobFormat` | `m-d-Y` | Date of birth format: `d`, `m` and `Y` separated by `-`, `/` or `.` (e.g. `d-m-Y`). Dates in `YYYY-MM-DD` format, sent by `<input type="date">`, are always accepted. |
+| `&csrf` | `0` | Set to `1` to require a CSRF token on all forms that change data (login, registration, profile, password reset, account deletion, manager). Every form must then contain the `[+form.csrf+]` placeholder. |
+| `&legacyMd5` | `0` | Set to `1` to keep storing passwords as MD5, as in previous versions (see *Passwords* below). |
+
+Removed parameters: `&loadJquery` and the `taconite` value of `&type`. `&customJs` still works.
+
+### Passwords
+- New and changed passwords are stored with `password_hash()` (bcrypt) instead of unsalted MD5.
+- Existing MD5 passwords keep working and are converted automatically at the user's next successful login: no action is needed from users.
+- bcrypt hashes are 60 characters long. If the `password` column of the `web_users` table is shorter, WebLoginPE keeps using MD5. Check it with:
+
+  ```sql
+  SHOW COLUMNS FROM modx_web_users LIKE 'password';
+  ```
+
+- The Evolution core (the WebLogin snippet and the manager) still uses MD5 for web users. Passwords set from the manager keep working and are converted at the next login. If the same users also log in through **another** snippet or plugin that only understands MD5, set `&legacyMd5=`1``.
+- Temporary passwords created by the password reset are no longer stored in clear text.
+- The password is no longer stored in the session (`$_SESSION['webValid']` is now empty).
+
+### "Remember me"
+- The cookie now contains a random token instead of the password hash. Tokens are stored (hashed) in the `web_user_settings` table, renewed at every automatic login and deleted at logout and when the password changes.
+- Cookies created by previous versions are no longer accepted: users who chose "remember me" will have to log in once more after the upgrade.
+- The cookie is set with `HttpOnly`, `SameSite=Lax` and, on HTTPS, `Secure`. The session ID is regenerated after a successful login.
+
+### CSRF protection
+With `&csrf=`1``, add the placeholder inside every WebLoginPE form:
+
+```html
+<form action="[~[*id*]~]" method="post">
+	[+form.csrf+]
+	...
+</form>
+```
+
+`[+form.csrf+]` outputs a hidden field; `[+wlpe.csrf+]` contains only the token value. Both placeholders are always available, so you can add them to your templates before enabling the check. A request without a valid token is not processed and the form is shown again with message 43.
 
 ### MySQL/MariaDB strict mode
 With strict mode enabled (`STRICT_TRANS_TABLES`, the default on most recent servers), any `NOT NULL` column without a default value that is not listed in `&customFields` makes the registration fail with:
@@ -47,8 +90,17 @@ LEFT JOIN modx_web_user_attributes wua ON wua.internalKey = wu.id
 WHERE wua.id IS NULL;
 ```
 
+### Other behaviour changes
+- Uploaded photos are validated on their real content, never stored in the site root and always re-encoded. Only JPEG, GIF and PNG are accepted.
+- Passwords are used exactly as typed: special characters (quotes, `<`, `>`, …) are now allowed.
+- All `[+post.*+]`, `[+user.*+]` and `[+view.*+]` placeholders are HTML-escaped. Existing entities (e.g. `&egrave;`) are not double-encoded. If a template relied on HTML stored in a user field, it will now be shown as text.
+- Fields missing from the submitted profile form no longer overwrite the stored values with an empty string. Unchecked checkboxes defined in `&inputHandler` are still saved as empty.
+- Several WebLoginPE calls on the same page (e.g. a login box and the profile form) now all get their language strings.
+- `[+user.age+]` returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
+- On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.
+
 ### Checkbox values in `&inputHandler`
-Checkboxes can now send a custom value, written between the parentheses:
+Checkboxes can send a custom value, written between the parentheses:
 
 ```
 &inputHandler=`:userNewsletter:newsletter:checkbox:(yes)`
@@ -69,22 +121,3 @@ Keep the submit button for the main action and turn the others into links:
 <button class="btn btn-success" type="submit" name="service" value="saveprofile">Save</button>
 <a class="btn btn-danger" href="[~[(site_start)]~]">Cancel</a>
 ```
-
-### New parameters in 1.4.0
-
-| Parameter | Default | Description |
-|---|---|---|
-| `&allowPhoto` | `0` | Set to `1` to enable the profile photo upload. **Disabled by default**: if your forms use the `photo` field, add `&allowPhoto=`1`` or the upload is ignored. |
-| `&rememberDays` | `30` | Lifetime in days of the "remember me" cookie (previously 5 years). |
-| `&dobFormat` | `m-d-Y` | Date of birth format: `d`, `m` and `Y` separated by `-`, `/` or `.` (e.g. `d-m-Y`). Dates in `YYYY-MM-DD` format, sent by `<input type="date">`, are always accepted. |
-
-### Behaviour changes in 1.4.0
-- `btnfix.js` (a fix for Internet Explorer 6/7 button handling) has been removed. Templates with several submit buttons named `service` work as long as only the clicked button is sent, which is what every current browser does.
-- Uploaded photos are validated on their real content, never stored in the site root and always re-encoded. Only JPEG, GIF and PNG are accepted.
-- Passwords are used exactly as typed: special characters (quotes, `<`, `>`, …) are now allowed. Existing passwords keep working.
-- All `[+post.*+]`, `[+user.*+]` and `[+view.*+]` placeholders are HTML-escaped. Existing entities (e.g. `&egrave;`) are not double-encoded. If a template relied on HTML stored in a user field, it will now be shown as text.
-- The "remember me" cookie is set with `HttpOnly`, `SameSite=Lax` and, on HTTPS, `Secure`. The session ID is regenerated after a successful login.
-
-### Placeholders
-- `[+user.age+]` now returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
-- On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.

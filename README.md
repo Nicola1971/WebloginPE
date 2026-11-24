@@ -2,7 +2,7 @@
 
 ### Advanced web user management snippet for Evolution 1.4x
 
-## Upgrading from 1.3.x (1.30 /1.3.1 /1.3.2)
+## Upgrading from 1.3.x
 
 ### Files
 - Replace both `assets/snippets/webloginpe/webloginpe.class.php` and `assets/snippets/webloginpe/webloginpe.snippet.php`: the two files must be updated together.
@@ -68,6 +68,24 @@ Keep the submit button for the main action and turn the others into links:
 <a class="btn btn-danger" href="[~[(site_start)]~]">Cancel</a>
 ```
 
+### New parameters in 1.3.4
+
+| Parameter | Default | Description |
+|---|---|---|
+| `&allowPhoto` | `0` | Set to `1` to enable the profile photo upload. **Disabled by default**: if your forms use the `photo` field, add `&allowPhoto=`1`` or the upload is ignored. |
+| `&rememberDays` | `30` | Lifetime in days of the "remember me" cookie (previously 5 years). |
+| `&dobFormat` | `m-d-Y` | Date of birth format: `d`, `m` and `Y` separated by `-`, `/` or `.` (e.g. `d-m-Y`). Dates in `YYYY-MM-DD` format, sent by `<input type="date">`, are always accepted. |
+| `&ieButtonFix` | `0` | Loads the legacy `btnfix.js` (Internet Explorer 6/7 fix). No longer loaded by default. |
+
+### Behaviour changes in 1.3.4
+- Uploaded photos are validated on their real content, never stored in the site root and always re-encoded. Only JPEG, GIF and PNG are accepted.
+- Passwords are used exactly as typed: special characters (quotes, `<`, `>`, …) are now allowed. Existing passwords keep working.
+- All `[+post.*+]`, `[+user.*+]` and `[+view.*+]` placeholders are HTML-escaped. Existing entities (e.g. `&egrave;`) are not double-encoded. If a template relied on HTML stored in a user field, it will now be shown as text.
+- The "remember me" cookie is set with `HttpOnly`, `SameSite=Lax` and, on HTTPS, `Secure`. The session ID is regenerated after a successful login.
+
+### Placeholders
+- `[+user.age+]` now returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
+- On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.
 ### Placeholders
 - `[+user.age+]` now returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
 - On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.

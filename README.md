@@ -4,6 +4,8 @@
 
 ## Upgrading from 1.3.x
 
+> **1.4.0 is a security release.** It fixes a vulnerability in the profile photo upload that allowed uploading arbitrary files: all 1.3.x installations should upgrade. Read the behaviour changes below before upgrading.
+
 ### Files
 - Replace both `assets/snippets/webloginpe/webloginpe.class.php` and `assets/snippets/webloginpe/webloginpe.snippet.php`: the two files must be updated together.
 - Snippet parameters and templates from 1.3.x keep working without changes.
@@ -34,7 +36,7 @@ WHERE TABLE_SCHEMA = 'your_database'
 
 Review the generated statements before running them. For `TEXT` columns use `MODIFY \`column\` TEXT NULL` instead, since not every MySQL version accepts a default on `TEXT`.
 
-Columns created by 1.3.3 already get `DEFAULT ''`.
+Columns created by 1.3.3 and later already get `DEFAULT ''`.
 
 If registrations failed before the upgrade, you may find users created in `web_users` without attributes. List them with:
 
@@ -59,7 +61,7 @@ UPDATE modx_web_user_attributes_extended SET newsletter = 'yes' WHERE newsletter
 ```
 
 ### Templates: one submit button per form
-Do not use more than one `<button type="submit" name="service">` in the same form. The bundled `btnfix.js` (a legacy Internet Explorer fix) can send several `service` values, and PHP keeps the last one: in a profile form with *Save* and *Cancel* buttons this results in `service=cancel`, so the profile is not saved and the user is redirected to the home page.
+Do not use more than one `<button type="submit" name="service">` in the same form. Up to 1.3.4 the bundled `btnfix.js` (a legacy Internet Explorer fix, removed in 1.4.0) could send several `service` values, and PHP keeps the last one: in a profile form with *Save* and *Cancel* buttons this resulted in `service=cancel`, so the profile was not saved and the user was redirected to the home page. Even without that script, pressing Enter in a field submits the form with the first submit button, which may not be the one you expect.
 
 Keep the submit button for the main action and turn the others into links:
 
@@ -68,24 +70,21 @@ Keep the submit button for the main action and turn the others into links:
 <a class="btn btn-danger" href="[~[(site_start)]~]">Cancel</a>
 ```
 
-### New parameters in 1.3.4
+### New parameters in 1.4.0
 
 | Parameter | Default | Description |
 |---|---|---|
 | `&allowPhoto` | `0` | Set to `1` to enable the profile photo upload. **Disabled by default**: if your forms use the `photo` field, add `&allowPhoto=`1`` or the upload is ignored. |
 | `&rememberDays` | `30` | Lifetime in days of the "remember me" cookie (previously 5 years). |
 | `&dobFormat` | `m-d-Y` | Date of birth format: `d`, `m` and `Y` separated by `-`, `/` or `.` (e.g. `d-m-Y`). Dates in `YYYY-MM-DD` format, sent by `<input type="date">`, are always accepted. |
-| `&ieButtonFix` | `0` | Loads the legacy `btnfix.js` (Internet Explorer 6/7 fix). No longer loaded by default. |
 
-### Behaviour changes in 1.3.4
+### Behaviour changes in 1.4.0
+- `btnfix.js` (a fix for Internet Explorer 6/7 button handling) has been removed. Templates with several submit buttons named `service` work as long as only the clicked button is sent, which is what every current browser does.
 - Uploaded photos are validated on their real content, never stored in the site root and always re-encoded. Only JPEG, GIF and PNG are accepted.
 - Passwords are used exactly as typed: special characters (quotes, `<`, `>`, …) are now allowed. Existing passwords keep working.
 - All `[+post.*+]`, `[+user.*+]` and `[+view.*+]` placeholders are HTML-escaped. Existing entities (e.g. `&egrave;`) are not double-encoded. If a template relied on HTML stored in a user field, it will now be shown as text.
 - The "remember me" cookie is set with `HttpOnly`, `SameSite=Lax` and, on HTTPS, `Secure`. The session ID is regenerated after a successful login.
 
-### Placeholders
-- `[+user.age+]` now returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
-- On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.
 ### Placeholders
 - `[+user.age+]` now returns the user's age in years (it previously returned a year). It is empty when no date of birth is set.
 - On PHP 8.1+ dates are formatted without `strftime()`: day and month names follow the `LC_TIME` locale only if the `intl` extension is installed, otherwise they are in English.

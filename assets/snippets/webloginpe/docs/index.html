@@ -6,6 +6,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
 	<title>WebLoginPE: Documentation</title>
+	<script type="text/javascript" src="style/webloginpe.js"></script>
 	<link rel="stylesheet" href="style/webloginpe.css" type="text/css" media="screen" title="WebLoginPE [Screen]" charset="utf-8">
 	<link rel="alternate stylesheet" href="style/webloginpe.print.css" type="text/css" media="print,all" title="WebLoginPE [Print]" charset="utf-8">
 	
@@ -15,7 +16,7 @@
 	<div id="wrapper">
 		<div id="head">
 			<h1>WebLoginPE: Advanced User Management.</h1>
-			<h2>Version 1.4.1</h2>
+			<h2>Version 1.4.2</h2>
 			<h3>By Dr. Scotty Delicious, Scientist DFPA. <br/>Maintained by Nicola Lambathakis.</h3>
 		</div>
 		<div id="select">
@@ -29,7 +30,7 @@
 			</ul>
 		</div>
 		<div id="content">
-			<h4>WebLoginPE v. 1.4.0</h4>
+			<h4>WebLoginPE v. 1.4.2</h4>
 			<p>
 				WebLoginPE is a progressively enhanced (PE), advanced web user management snippet for Evolution CMS. WebLoginPE manages user registration, activation, login, logout, password recovery, extended profiling, profile editing, viewing and contacting other users, and user profile removal. WebLoginPE started off as a rewrite of the EVO weblogin snippet so I could make an AJAX login for my site.
 			</p>
@@ -53,22 +54,32 @@
 				<li>The GD extension, only if the profile photo upload is enabled. The intl extension is optional (localized day and month names on PHP 8.1+)</li>
 			</ul>
 			<h4>Installation/Upgrade</h4>
-			<ol><h5>New Installation</h5>
-				<li>Upload the "webloginpe" folder and all it's contents to /assets/snippets/ in your EVO installation.</li>
+			<ol><h5>Installation</h5>
+				<li>Download the ZIP of the latest release from <a href="https://github.com/Nicola1971/WebloginPE/releases">GitHub</a> and install it with the Extras (Store) module. The WebLoginPE snippet is created in the "Forms" category with the right snippet code.</li>
+			</ol>
+			<ol><h5>Manual installation</h5>
+				<li>Extract the release ZIP and upload the "assets/snippets/webloginpe" folder and all its contents to /assets/snippets/ in your EVO installation.</li>
 				<li>Log into the EVO Manager.</li>
-				<li>Go to "Resources" &gt; "Manage Resources" &gt; "snippets" and click "New snippet"</li>
-				<li>Give this snippet a name of <code>WebLoginPE</code> and a description of <code>&lt;strong&gt;1.4.0&lt;/strong&gt; A progressively enhanced, complete Web User management snippet.</code></li>
-				<li>Open the file "webloginpe.snippet.php" and copy it's contents to the "Snippet code" area back in the manager.</li>
+				<li>Go to "Elements" &gt; "Manage Elements" &gt; "Snippets" and click "New snippet".</li>
+				<li>Give this snippet a name of <code>WebLoginPE</code> and a description of <code>&lt;strong&gt;1.4.2&lt;/strong&gt; A progressively enhanced, complete Web User management snippet.</code></li>
+				<li>Paste this line in the "Snippet code" area and leave the "Static file path" field (FileSource plugin) empty: <code>return require(MODX_BASE_PATH . 'assets/snippets/webloginpe/webloginpe.snippet.php');</code></li>
 				<li>Save the snippet.</li>
 			</ol>
 			<ol><h5>Upgrade from 1.3.x</h5>
 				<li>Read the <strong>"Upgrading from 1.3.x"</strong> section of the README: 1.4.0 changes some default behaviours (photo upload disabled by default, "remember me" users have to log in once more, escaped placeholders).</li>
-				<li>Upload "webloginpe.class.php" and the "lang" folder to "/assets/snippets/webloginpe" in your Evolution installation and OVERWRITE or REPLACE the existing files.</li>
-				<li>Paste the NEW contents of webloginpe.snippet.php into the existing WebLoginPE snippet as described above in "New Installation".</li>
-				<li>The "taconite XML examples" folder and the files used only by the removed Taconite mode (jquery.packed.js, jquery.form.js, jquery.taconite.js) and btnfix.js in the "js" folder can be deleted. Keep jquery-1.1.3.1.js and jquery.corner2.js if you keep this documentation, which uses them.</li>
+				<li>Install the ZIP of the new release with the Extras (Store) module: files and snippet code are updated.</li>
+				<li>Or manually: upload the contents of "assets/snippets/webloginpe" from the release to /assets/snippets/webloginpe/, overwriting the existing files, then replace the code of the WebLoginPE snippet in the manager with the line shown above in "Manual installation".</li>
+				<li>The "taconite XML examples" folder and the whole "js" folder are no longer used and can be deleted.</li>
 			</ol>
 			
 			<h4>Change Log</h4>
+            <ol><h5>11/25/2026 v. 1.4.2</h5>
+            <li>Fixed a conflict with the FileSource plugin (installed by default with EVO 1.4): the old snippet stub was recognized as a file binding, and saving the snippet from the manager could overwrite webloginpe.snippet.php. The installer now uses <code>return require(MODX_BASE_PATH . 'assets/snippets/webloginpe/webloginpe.snippet.php');</code>. When upgrading, replace the snippet code in the manager with the new stub and leave the "Static file path" field empty.</li>
+            <li>New minimal style for this documentation: no images, readable on mobile, dark mode (automatic or with the switch in the menu) and a simplified print style.</li>
+            <li>The documentation no longer uses jQuery: the "js" folder has been removed.</li>
+            <li>Language files es, fr, fa and ru updated with the missing strings; Russian placeholders and the forgot-password link in ru, fr and fa fixed.</li>
+            <li>Fixed the literal [+000+] shown in the password mismatch message when changing or activating a password.</li>
+            </ol>
 			<ol><h5>11/25/2026 v. 1.4.1</h5>
                 <li>Fixed a conflict with MODxAPI (FormLister, DocLister): both used a cookie named "WebLoginPE" for their "remember me" login, and WebLoginPE 1.4.0 deleted the FormLister cookie. The WebLoginPE cookie is now named "wlpe_remember".</li>
             </ol>

@@ -1,262 +1,275 @@
+/*
+ * WebLoginPE documentation - minimal style (1.4.x)
+ * No images, no JavaScript required for the layout.
+ */
+
+:root {
+	--text: #1f2328;
+	--muted: #656d76;
+	--bg: #ffffff;
+	--soft: #f6f8fa;
+	--line: #d8dee4;
+	--accent: #0b6bcb;
+	--warn-bg: #fff8e6;
+	--warn-line: #d4a72c;
+	--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* dark: system setting, unless the reader chose light with the switch in the menu */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--text: #e6edf3;
+		--muted: #9198a1;
+		--bg: #0d1117;
+		--soft: #161b22;
+		--line: #30363d;
+		--accent: #4493f8;
+		--warn-bg: #2a2109;
+		--warn-line: #9e7c1f;
+	}
+}
+:root[data-theme="dark"] {
+	--text: #e6edf3;
+	--muted: #9198a1;
+	--bg: #0d1117;
+	--soft: #161b22;
+	--line: #30363d;
+	--accent: #4493f8;
+	--warn-bg: #2a2109;
+	--warn-line: #9e7c1f;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
 body {
-	background: #069 url(../images/bg.jpg) repeat-x;
-	color: #333;
-	text-align: center;
 	margin: 0;
-	padding: 0;
-	font-size:13px;
-	line-height: 1.4;
-	font-family:"Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Verdana, Arial, sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-a {
-	color: #39f;
-	font-weight: bold;
-	text-decoration: none;
-}
-
-a:hover {
-	color: #06c;
-	border-bottom: 1px dotted #aaa;
-}
-
-a:visited {
-	color: #06c;
-}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
 #wrapper {
-	text-align: left;
+	max-width: 52rem;
 	margin: 0 auto;
-	width: 788px;
-	background: url(../images/content.jpg) repeat-y;
+	padding: 2.5rem 1.5rem 3rem;
 }
 
-#head {
-	height: 375px;
-	background: url(../images/head.jpg) no-repeat;
-	margin: 0;
-	padding: 0;
-	
-}
-
+/* ---------- header ---------- */
+#head { margin-bottom: 1.5rem; }
 #head h1 {
-	display: none;
-}
-
-#head h2 {
-	position: absolute;
-	padding: 0;
-	margin: 90px 0 0 180px;
-	color: #ccc;
-}
-
-#head h3 {
-	position: absolute;
-	padding: 0;
-	font-size: 10pt;
-	color: #39f;
-	margin: 85px 0 0 450px;
-}
-
-#select {
-	margin-top: -195px;
-}
-
-#menu {
 	margin: 0;
-	padding: 0 35px;
-	text-align: center;
+	font-size: 1.75rem;
+	line-height: 1.25;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+#head h2 {
+	display: inline-block;
+	margin: 0.6rem 0 0;
+	padding: 0.1rem 0.55rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--muted);
+}
+#head h3 {
+	margin: 0.6rem 0 0;
+	font-size: 0.9rem;
+	font-weight: 400;
+	color: var(--muted);
+}
+
+/* ---------- navigation ---------- */
+#select {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--bg);
+	border-bottom: 1px solid var(--line);
+	margin: 0 0 2rem;
+}
+#menu {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 1.5rem;
+	margin: 0;
+	padding: 0;
 	list-style: none;
 }
-
-#menu li a span {
-/*	font-size: 1%;*/
-}
-
-#menu li {
-	display: inline;
+#menu li { margin: 0; }
+#menu li.theme-switch { margin-left: auto; display: flex; align-items: center; }
+#theme-toggle {
+	width: 2rem;
+	height: 2rem;
 	padding: 0;
-	margin: 0px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted);
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
 }
-
-#menu li a {
-	padding: 4px 10px;
-	background: #ccc;
-	border: 2px solid #69c;
-	text-decoration: none;
-	color: #39f;
+#theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+#menu a span { font-size: 0.95rem; }
+#menu a {
+	display: inline-block;
+	font-size: 0; /* hides the ":" after "Home" in the markup */
+	padding: 0.7rem 0;
+	color: var(--muted);
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
 }
+#menu a:hover { color: var(--text); text-decoration: none; }
+#menu a.here { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
 
-#menu li a:hover, #menu li a.here:hover {
-	background: #39f;
-	color: #ddd;
-	border: 2px solid #ddd;
-}
-
-#menu li a.here {
-	background: #69c;
-	color: #ddd;
-	border: 2px solid #ddd;
-}
-
-#content {
-	padding: 0px 30px 0px 30px;
-}
-
+/* ---------- content ---------- */
 #content h4 {
-	font-size: 16pt;
-	padding: 0;
-	margin: 20px 0 0 0;
-	border-bottom: 2px solid #aaa;
+	margin: 2.5rem 0 0.75rem;
+	font-size: 1.35rem;
+	line-height: 1.3;
 }
-
+#content > h4:first-child { margin-top: 0; }
 #content h5 {
-	font-size: 13pt;
-	margin: 20px 0 10px 0px;
-	border-bottom: #aaa solid 1px;
-	color: #666;
+	margin: 0 0 0.5rem;
+	font-size: 1.05rem;
+	font-family: var(--mono);
+	font-weight: 600;
+}
+#content h6 {
+	margin: 0 0 0.35rem;
+	font-family: var(--mono);
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--text);
+}
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.4rem; }
+li { margin: 0.25rem 0; }
+code {
+	font-family: var(--mono);
+	font-size: 0.875em;
+	background: var(--soft);
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	padding: 0.05rem 0.3rem;
+}
+hr, hr.hr {
+	border: 0;
+	border-top: 1px solid var(--line);
+	margin: 2rem 0;
 }
 
-#content ol h5 {
-	margin: 20px 10px 10px -30px;
+/* changelog and install steps: <ol><h5>title</h5><li>... */
+#content ol {
+	margin: 0 0 1.75rem;
+	padding-left: 1.4rem;
+}
+#content ol > h5 {
+	margin: 0 0 0.5rem -1.4rem;
+	font-family: inherit;
+	font-size: 1rem;
 }
 
-#content .parameter h5 {
-	font-size: 12pt;
-	padding: 5px 10px;
-	margin: -10px -10px 5px -10px;
-	border-bottom: 1px solid #ccc;
-	background: #666;
-	color: #ccc;
-}
-
-#content .example h6 {
-	font-size: 11pt;
-	padding: 0;
-	margin: -5px 0 5px 0;
-	border-bottom: 1px dotted #aaa;
-}
-
-#content p {
-	text-indent: 20px;
-	text-align: justify;
-}
-
-#content #services li {
-	list-style: disc;
-	font-weight: bold;
-	color: #444;
-	font-size: 12pt;
-}
-
-#foot {
-	height: 100px;
-	background: url(../images/foot.jpg) no-repeat;
-}
-
-#footmenu {
-	text-align: center;
-}
-
-#footmenu a {
-	padding: 0 10px;
-	color: #39f;
-}
-
-#footmenu a:hover,
-#footmenu a:visited
-{
-	color: #06c;
-}
-
-#credits {
-	padding: 10px 0 0 0;
-	text-align: center;
-	color: #eee;
-	font-size: 12pt;
-	margin: 25px 0 0 0;
-}
-
-#paramList1 {
-	background: #ddd;
-	margin-top: 20px;
-}
-
-#paramList, .paramList {
-	background: #eee;
-}
-
+/* ---------- parameters, events, methods ---------- */
+.paramList, #paramList, #paramList1 { margin: 0; }
 .parameter {
-	background: #999;
-	padding: 0px 10px 5px 10px;
-	margin-bottom: 25px;
+	padding: 1.25rem 0;
+	border-top: 1px solid var(--line);
 }
+.paramList > .parameter:first-child,
+#paramList > .parameter:first-child,
+#paramList1 > .parameter:first-child { border-top: 0; padding-top: 0.25rem; }
+.details { color: var(--text); }
 
-.details {
-	margin-top: 4px;
+.example, .code {
+	margin: 0.75rem 0;
+	padding: 0.8rem 1rem;
+	background: var(--soft);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	font-family: var(--mono);
+	font-size: 0.85rem;
+	line-height: 1.55;
+	overflow-x: auto;
+	word-break: break-word;
 }
-
-.example {
-	margin: 0;
-	padding: 10px 5px;
-	background: #bbb;
-	margin-bottom: 5px;
+.example .example {
+	margin: 0.4rem 0 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	font-family: inherit;
+	font-size: 0.95rem;
 }
-
-#content .code {
-	background: #eee;
-	margin: 10px;
-}
-
-#content .code .parameter {
-	padding: 20px;
-	font-family: courier;
-	font-size: 9pt;
-}
-
-.warning {
-	color: #900;
-	font-size: 80%;
-}
+.code .parameter { padding: 0; border: 0; }
+/* blocks with a title (API descriptions, "Default:" boxes) are prose, not code */
+.example:has(> h6) { font-family: inherit; font-size: 0.9rem; }
 
 .sidenote {
-	font-size: 75%;
-	color: #666;
-	font-weight: normal;
+	color: var(--muted);
+	font-family: inherit;
+	font-size: 0.85em;
+	font-weight: 400;
 }
-
-.hr {
-	padding: 0;
-	margin: 0;
-	height: 1px;
-	background: #aaa;
-	border: none;
+.warning {
+	color: inherit;
 }
+p.warning {
+	padding: 0.75rem 1rem;
+	background: var(--warn-bg);
+	border-left: 3px solid var(--warn-line);
+	border-radius: 0 6px 6px 0;
+	font-size: 0.95rem;
+}
+span.warning { font-weight: 600; }
 
+/* ---------- services table ---------- */
 #servicesTable {
 	width: 100%;
-	background: #eee;
+	border-collapse: collapse;
+	margin: 0.5rem 0 1.5rem;
+	font-size: 0.9rem;
 }
-
-#servicesTable tr {
-	background: #eee;
-}
-
 #servicesTable td {
-	border: 1px solid #aaa;
-	width: 33%;
-}
-
-.servicesHead {
-	text-align: center;
-	font-weight: bold;
-	font-size: 12pt;
-	background: #666;
-	color: #ccc;
-	margin-top: 10px;
-}
-
-.servicesList {
-	background: #ddd;
 	vertical-align: top;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--line);
+}
+.servicesHead {
+	background: var(--soft);
+	font-weight: 600;
+}
+.servicesList ul { margin: 0; padding-left: 1.1rem; font-family: var(--mono); font-size: 0.85rem; }
+
+/* ---------- live form samples in forms.html ---------- */
+#content label { display: inline-block; margin: 0.25rem 0; }
+#content select, #content input, #content button {
+	font: inherit;
+	font-size: 0.9rem;
+}
+
+/* ---------- footer ---------- */
+#foot {
+	margin-top: 3rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--line);
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+#footmenu { margin: 0 0 0.5rem; }
+#footmenu a { color: var(--muted); margin-right: 1rem; }
+#footmenu a:hover { color: var(--text); }
+#credits { margin: 0; }
+
+@media (max-width: 40rem) {
+	#wrapper { padding: 1.5rem 1rem 2rem; }
+	#head h1 { font-size: 1.4rem; }
+	#menu { gap: 0 1rem; }
 }

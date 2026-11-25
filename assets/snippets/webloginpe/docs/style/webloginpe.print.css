@@ -1,1 +1,15 @@
-body {background:#fff;color:#000;font-size:13px;font-family:"Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Verdana, Arial, sans-serif;}a,a:visited {color:#000;text-decoration:none;}#content {padding:0 30px;}#content h4 {font-size:16pt;border-bottom:2px solid #aaa;margin:20px 0 0;padding:0;}#content h5 {font-size:13pt;border-bottom:#aaa solid 1px;color:#666;margin:20px 0 10px;}#content ol h5 {margin:20px 10px 10px -30px;}#content .parameter h5 {}#content .example h6 {font-size:11pt;border-bottom:1px dotted #aaa;margin:-5px 0 5px;padding:0;}#content p {text-align:justify;}#content #services li {list-style:disc;font-weight:700;color:#444;font-size:12pt;}.hr {height:1px;background:#aaa;border:none;margin:0;padding:0;}#select,#menu,#head,#foot {display:none;}
+/* WebLoginPE documentation - print style (1.4.x) */
+body { margin: 0; color: #000; background: #fff; font: 11pt/1.5 Georgia, "Times New Roman", serif; }
+#wrapper { max-width: none; padding: 0; }
+#select, #footmenu { display: none; }
+a { color: #000; text-decoration: none; }
+#head h1 { font-size: 18pt; margin: 0; }
+#head h2, #head h3 { font-size: 10pt; font-weight: normal; margin: 2pt 0; }
+h4 { font-size: 14pt; margin: 18pt 0 6pt; page-break-after: avoid; }
+h5 { font-size: 11pt; margin: 0 0 4pt; page-break-after: avoid; }
+.parameter { padding: 8pt 0; border-top: 0.5pt solid #999; page-break-inside: avoid; }
+.example, .code { font-family: "Courier New", monospace; font-size: 9pt; border: 0.5pt solid #999; padding: 6pt; margin: 6pt 0; }
+p.warning { border-left: 2pt solid #000; padding-left: 6pt; }
+#servicesTable { border-collapse: collapse; width: 100%; }
+#servicesTable td { border: 0.5pt solid #999; padding: 4pt; vertical-align: top; }
+#foot { margin-top: 18pt; font-size: 9pt; }

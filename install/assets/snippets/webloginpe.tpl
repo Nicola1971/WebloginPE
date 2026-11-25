@@ -5,7 +5,7 @@
  * Advanced web user management snippet for Evolution
  *
  * @category 	snippet
- * @version 	1.4.1
+ * @version 	1.4.2
  * @license 	http://www.gnu.org/copyleft/gpl.html GNU Public License (GPL)
  * @author      Scotty Delicious
  * @author      Nicola1971 
@@ -14,4 +14,4 @@
  * @internal    @installset base, sample
  */
 
-return require MODX_BASE_PATH.'assets/snippets/webloginpe/webloginpe.snippet.php';
+return require(MODX_BASE_PATH . 'assets/snippets/webloginpe/webloginpe.snippet.php');

@@ -1,7 +1,7 @@
 <?php
 /**
      * WebLoginPE
-     * v1.4
+     * v1.4.1
      *  
      * See the "docs" folder for detailed usage and parameter instructions.
      */

@@ -46,6 +46,7 @@
 	$wlpe_lang[40] = 'G&eacute;nero';
 	$wlpe_lang[41] = 'Conectado';
 	$wlpe_lang[42] = 'Desconectado';
+	$wlpe_lang[43] = 'El formulario ha caducado. Vuelve a cargar la p&aacute;gina e int&eacute;ntalo de nuevo.';
 	
 	//Snippet Strings
 	$wlpe_lang[100] = 'Te hemos enviado un e-mail con detalles de tu cuenta. Si no recibes el email, contacta con el webmaster de ';

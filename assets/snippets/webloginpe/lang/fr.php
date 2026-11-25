@@ -23,7 +23,7 @@
 	$wlpe_lang[17] = 'Une erreur est survenue lors de l\'activation du mot de passe. Désolé.';
 	$wlpe_lang[18] = 'Le mot de passe est incorrect. Réessayer.';
 	$wlpe_lang[19] = 'Vous avez échoué trop de fois. Vous avez été bloqué. Vous pouvez réessayer dans [+000+] minutes.';
-	$wlpe_lang[20] = '<p>Votre mot de passe est incorrect.</p><p>Vous avez échoué [+000+] fois. Vous serez bloqué pour [+111+] minutes après [+222+] tentatives échouées.</p><p>Veuillez réessayer.</p><p>Avez-vous <a href="[~[*id*]~]&service=forgot">oublié</a> votre mot de passe?</p>';
+	$wlpe_lang[20] = '<p>Votre mot de passe est incorrect.</p><p>Vous avez échoué [+000+] fois. Vous serez bloqué pour [+111+] minutes après [+222+] tentatives échouées.</p><p>Veuillez réessayer.</p><p>Avez-vous <a href="[~[*id*]~]?service=forgot">oublié</a> votre mot de passe?</p>';
 	$wlpe_lang[21] = 'Ce nom d\'utilisateur n\'existe pas.';
 	$wlpe_lang[22] = 'Vous avez échoué trop de fois. Vous avez été bloqué!';
 	$wlpe_lang[23] = 'Vous êtes bloqué et ne pouvez pas vous connecter!';
@@ -38,6 +38,15 @@
 	$wlpe_lang[32] = 'Votre nom d\'utilisateur contient des caractères non valides. Veuillez utilisé seulement des lettres[a-z][A-Z] et des chiffres[0-9].';
 	$wlpe_lang[33] = 'Inconnu.';
 	$wlpe_lang[34] = 'Vous devez accepter les termes d\'utilisation.';
+	$wlpe_lang[35] = 'Un utilisateur non activé a été supprimé';
+	$wlpe_lang[36] = 'L\'utilisateur "[+000+]" a été supprimé. "[+000+]" s\'est inscrit le [+111+] et n\'a pas activé son compte en se connectant.';
+	$wlpe_lang[37] = 'Votre message a été envoyé à ';
+	$wlpe_lang[38] = 'Privé';
+	$wlpe_lang[39] = 'Pays';
+	$wlpe_lang[40] = 'Sexe';
+	$wlpe_lang[41] = 'En ligne';
+	$wlpe_lang[42] = 'Hors ligne';
+	$wlpe_lang[43] = 'Le formulaire a expiré. Veuillez recharger la page et réessayer.';
 	
 	//Snippet Strings
 	$wlpe_lang[100] = 'Vérifier votre boîte de courriel pour avoir les détails sur votre compte. Si vous ne recevez pas de courriel, contactez l\'administrateur du site ';

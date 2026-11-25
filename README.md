@@ -1,12 +1,14 @@
-# WebLoginPE 1.4
+# WebLoginPE 1.4.1
 
 ### Advanced web user management snippet for Evolution 1.4x
 
 ## Upgrading from 1.3.x
 
+> **1.4.0 is a security release.** It fixes a vulnerability introduced in 1.3.3 that allowed changing the password of any active user through the activation service, and a vulnerability in the profile photo upload that allowed uploading arbitrary files. All 1.3.x installations should upgrade. Read the behaviour changes below before upgrading.
+
 ### Files
 - Replace `webloginpe.class.php`, `webloginpe.snippet.php` and the language files in `lang/`: the class and the snippet must be updated together.
-- The files used only by the removed Taconite mode (`js/jquery.packed.js`, `js/jquery.form.js`, `js/jquery.taconite.js`) and `js/btnfix.js` can be deleted. Keep `js/jquery-1.1.3.1.js` and `js/jquery.corner2.js` if you ship the HTML documentation in `docs/`, which uses them.
+- The files used only by the removed Taconite mode (the `taconite XML examples` folder, `js/jquery.packed.js`, `js/jquery.form.js`, `js/jquery.taconite.js`) and `js/btnfix.js` can be deleted. Keep `js/jquery-1.1.3.1.js` and `js/jquery.corner2.js` if you ship the HTML documentation in `docs/`, which uses them.
 - Custom language files need the new string `$wlpe_lang[43]` (expired form message). If it is missing, an English fallback is used.
 
 ### New parameters in 1.4.0
@@ -36,7 +38,7 @@ Removed parameters: `&loadJquery` and the `taconite` value of `&type`. `&customJ
 
 ### "Remember me"
 - The cookie now contains a random token instead of the password hash. Tokens are stored (hashed) in the `web_user_settings` table, renewed at every automatic login and deleted at logout and when the password changes.
-- Cookies created by previous versions are no longer accepted: users who chose "remember me" will have to log in once more after the upgrade.
+- The cookie is now named `wlpe_remember`. The old `WebLoginPE` cookie is no longer read or deleted by WebLoginPE, because MODxAPI (used by FormLister) uses the same name for its own "remember me" login. Users who chose "remember me" in WebLoginPE will have to log in once more after the upgrade.
 - The cookie is set with `HttpOnly`, `SameSite=Lax` and, on HTTPS, `Secure`. The session ID is regenerated after a successful login.
 
 ### CSRF protection

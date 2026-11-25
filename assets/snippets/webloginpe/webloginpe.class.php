@@ -1,7 +1,7 @@
 <?php
 /**
  * WebLoginPE
- * v1.4.1
+ * v1.4.2
  *
  * @copyright ©2007-2008 Scotty Delicious, 2026 Nicola Lambathakis
  * @license GPL
@@ -948,7 +948,7 @@ if (trim($username) == '') // pixelchutes
 			}
 			else
 			{
-				$this->FormatMessage($this->LanguageArray[2]);
+				$this->FormatMessage(str_replace('[+000+]', '"password"', $this->LanguageArray[2])); // 1.4.2: segnaposto sostituito
 				return;
 			}
 		}
@@ -1849,7 +1849,7 @@ if (trim($username) == '') // pixelchutes
 			}
 			else
 			{
-				return $this->FormatMessage($this->LanguageArray[2]);
+				return $this->FormatMessage(str_replace('[+000+]', '"password"', $this->LanguageArray[2])); // 1.4.2: segnaposto sostituito
 			}
 		}
 		if(!$saveMyPassword || !$unblockUser)

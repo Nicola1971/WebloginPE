@@ -1,7 +1,7 @@
 <?php
 /**
  * WebLoginPE
- * v1.4.0
+ * v1.4.1
  *
  * @copyright ©2007-2008 Scotty Delicious, 2026 Nicola Lambathakis
  * @license GPL
@@ -194,6 +194,13 @@ class WebLoginPE
 	var $ColumnCache = array();
 	
 	/**
+	 * 1.4.0: nome del cookie "ricordami". Diverso da "WebLoginPE", che e' usato
+	 * anche da MODxAPI/FormLister per il proprio login persistente.
+	 * @var string
+	 */
+	var $CookieName = 'wlpe_remember';
+	
+	/**
 	 * WebLoginPE Class Constructor
 	 *
 	 * @param array $LanguageArray An array of language specific strings.
@@ -304,14 +311,14 @@ class WebLoginPE
 		global $modx;
 		
 		// 1.4.0: login persistente con token casuale (vedi CreateRememberToken)
-		if (empty($_COOKIE['WebLoginPE']))
+		if (empty($_COOKIE[$this->CookieName]))
 		{
 			return false;
 		}
 		list($selector, $validator) = $this->RememberCookieParts();
 		if ($selector === '')
 		{
-			// cookie delle versioni precedenti (conteneva l'hash della password): non piu' accettato
+			// cookie non valido
 			$this->ClearLoginCookie();
 			return false;
 		}
@@ -2384,7 +2391,6 @@ if (trim($username) == '') // pixelchutes
 	            unset($_SESSION['webUserGroupNames']);
 	            unset($_SESSION['webDocgroups']);   
 	
-	         	$cookieName = 'WebLoginPE';
 				$this->ClearLoginCookie(); // 1.4.0
 	        }
 	        else
@@ -2394,7 +2400,6 @@ if (trim($username) == '') // pixelchutes
 	                setcookie(session_name(), '', time() - 3600, $modx->config['base_url']); // 1.4.0: con scadenza 0 il cookie non veniva cancellato
 	            }
 				
-				$cookieName = 'WebLoginPE';
 				$this->ClearLoginCookie(); // 1.4.0
 	            session_destroy();
 	        }
@@ -2744,7 +2749,7 @@ if (trim($username) == '') // pixelchutes
 	// Selettore valido dal cookie corrente, oppure '' 
 	function RememberCookieParts()
 	{
-		if (!empty($_COOKIE['WebLoginPE']) && is_string($_COOKIE['WebLoginPE']) && preg_match('/^([a-f0-9]{12}):([a-f0-9]{64})$/', $_COOKIE['WebLoginPE'], $m))
+		if (!empty($_COOKIE[$this->CookieName]) && is_string($_COOKIE[$this->CookieName]) && preg_match('/^([a-f0-9]{12}):([a-f0-9]{64})$/', $_COOKIE[$this->CookieName], $m))
 		{
 			return array($m[1], $m[2]);
 		}
@@ -2828,7 +2833,7 @@ if (trim($username) == '') // pixelchutes
 	 */
 	function SetLoginCookie($value, $expires)
 	{
-		setcookie('WebLoginPE', $value, array(
+		setcookie($this->CookieName, $value, array(
 			'expires'  => (int)$expires,
 			'path'     => '/',
 			'secure'   => $this->IsHttps(),
@@ -2846,18 +2851,13 @@ if (trim($username) == '') // pixelchutes
 			$modx->db->query("DELETE FROM ".$modx->getFullTableName('web_user_settings')." WHERE `setting_name` = 'wlpe_rt_".$selector."'");
 		}
 		$past = time() - 3600;
-		setcookie('WebLoginPE', '', array(
+		setcookie($this->CookieName, '', array(
 			'expires'  => $past,
 			'path'     => '/',
 			'secure'   => $this->IsHttps(),
 			'httponly' => true,
 			'samesite' => 'Lax'
 		));
-		// cookie creati dalle versioni precedenti, con il dominio esplicito
-		if (!empty($_SERVER['SERVER_NAME']))
-		{
-			setcookie('WebLoginPE', '', $past, '/', $_SERVER['SERVER_NAME']);
-		}
 	}
 	
 	

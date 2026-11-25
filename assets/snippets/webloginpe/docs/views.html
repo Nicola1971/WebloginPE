@@ -18,7 +18,7 @@
 	<div id="wrapper">
 		<div id="head">
 			<h1>WebLoginPE: Advanced User Management.</h1>
-			<h2>Version 1.4.0</h2>
+			<h2>Version 1.4.1</h2>
 			<h3>By Dr. Scotty Delicious, Scientist DFPA. <br/>Maintained by Nicola Lambathakis.</h3>
 		</div>
 		<div id="select">
@@ -133,7 +133,7 @@
 				<div class="parameter">
 					<h5>&amp;loginFormTpl</h5>
 					<p class="details">
-						The view presented to the user asking for their "username" and "password". Required form field names are "username" and "password". Optional inputs are a checkbox named "rememberme", which keeps the user logged in for the number of days set in <a href="parameters.html#rememberDays">&amp;rememberDays</a> (default 30), or a select named "stayloggedin", which keeps the user logged in for the number of seconds specified in each option value. The cookie is named "WebLoginPE" and contains a random token, never the username or the password: the token is renewed at every automatic login and deleted at logout or when the password changes.
+						The view presented to the user asking for their "username" and "password". Required form field names are "username" and "password". Optional inputs are a checkbox named "rememberme", which keeps the user logged in for the number of days set in <a href="parameters.html#rememberDays">&amp;rememberDays</a> (default 30), or a select named "stayloggedin", which keeps the user logged in for the number of seconds specified in each option value. The cookie is named "wlpe_remember" and contains a random token, never the username or the password: the token is renewed at every automatic login and deleted at logout or when the password changes.
 					</p>
 					<div class="example">
 						<h6>Default:</h6>

@@ -1,6 +1,6 @@
 # WebLoginPE 1.4.2
-
-### Advanced web user management snippet for Evolution 1.4x
+### The classic web user management snippet for Evolution CMS 1.4.x is back!
+Registration, login, profiles and user lists: now safer, bug-fixed and ready for PHP 8.
 
 ## Upgrading from 1.3.x
 
